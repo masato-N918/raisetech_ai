@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trello風タスク管理 ｜ 画面モック</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ============================= -->
+  <!-- S-1 ボード一覧画面              -->
+  <!-- ============================= -->
+  <section id="screen-boards" class="screen is-active">
+    <header class="app-header">
+      <h1 class="app-title">Trello風タスク管理</h1>
+    </header>
+
+    <main class="boards-main">
+      <div class="boards-heading">
+        <h2>マイボード</h2>
+        <button class="btn btn-primary" id="btn-add-board">＋ 新しいボード</button>
+      </div>
+
+
+      <div class="board-grid" id="board-grid">
+        <button class="board-card" data-board="仕事ボード" onclick="openBoard('仕事ボード')">
+          <span class="board-card-title">仕事</span>
+          <span class="board-card-del" title="削除" onclick="deleteBoard(event, this)">×</span>
+        </button>
+        <button class="board-card" data-board="学習ボード" onclick="openBoard('学習ボード')">
+          <span class="board-card-title">学習</span>
+          <span class="board-card-del" title="削除" onclick="deleteBoard(event, this)">×</span>
+        </button>
+        <button class="board-card" data-board="買い物ボード" onclick="openBoard('買い物ボード')">
+          <span class="board-card-title">買い物</span>
+          <span class="board-card-del" title="削除" onclick="deleteBoard(event, this)">×</span>
+        </button>
+      </div>
+
+      <!-- 空状態メッセージ（ボードが0件のとき表示） -->
+      <p class="empty-message" id="boards-empty" hidden>
+        まだボードがありません。「新しいボード」で作成しましょう。
+      </p>
+    </main>
+  </section>
+
+
+  <!-- ============================= -->
+  <!-- S-2 ボード画面                 -->
+  <!-- ============================= -->
+  <section id="screen-board" class="screen">
+    <header class="app-header board-header">
+      <button class="btn-back" onclick="backToBoards()">← 戻る</button>
+      <h1 class="app-title board-name" id="board-name" onclick="backToBoards()">仕事ボード</h1>
+      <div class="board-tools">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="search-input" placeholder="検索...">
+        </div>
+        <select class="label-filter" id="label-filter">
+          <option>ラベル ▼</option>
+        </select>
+      </div>
+    </header>
+
+    <main class="board-main">
+      <!-- リスト・カードは app.js がデータから描画します -->
+      <div class="lists" id="lists"></div>
+      <p class="dnd-hint">↑ カードはリスト内・リスト間を ドラッグ＆ドロップ で移動できます</p>
+    </main>
+  </section>
+
+
+  <!-- ============================= -->
+  <!-- ボード作成モーダル              -->
+  <!-- ============================= -->
+  <div id="board-modal" class="modal-overlay" hidden onclick="onBoardOverlayClick(event)">
+    <div class="modal modal-sm">
+      <div class="modal-head">
+        <h2>新しいボードを作成</h2>
+        <button class="icon-btn modal-close" id="board-modal-close">×</button>
+      </div>
+      <div class="modal-body">
+        <label class="field-label">ボード名</label>
+        <input type="text" class="field-input" id="board-add-input" placeholder="ボード名を入力...">
+      </div>
+      <div class="modal-foot modal-foot-end">
+        <button class="btn btn-ghost" id="board-add-cancel">キャンセル</button>
+        <button class="btn btn-primary" id="board-add-ok">作成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================= -->
+  <!-- S-3 カード詳細モーダル          -->
+  <!-- ============================= -->
+  <div id="card-modal" class="modal-overlay" hidden onclick="onOverlayClick(event)">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="modal-heading">カード詳細</h2>
+        <button class="icon-btn modal-close" onclick="closeCard()">×</button>
+      </div>
+
+      <div class="modal-body">
+        <label class="field-label">タイトル</label>
+        <input type="text" class="field-input" id="m-title">
+
+        <label class="field-label">リスト（状態）</label>
+        <select class="field-input" id="m-list"></select>
+
+        <label class="field-label">優先度</label>
+        <select class="field-input" id="m-priority">
+          <option value="">なし</option>
+          <option value="high">高</option>
+          <option value="medium">中</option>
+          <option value="low">低</option>
+        </select>
+
+        <label class="field-label">説明</label>
+        <textarea class="field-input" id="m-desc" rows="3"></textarea>
+
+        <div class="field-row">
+          <label class="field-label">期限</label>
+          <input type="date" class="field-input date-input" id="m-due">
+          <span class="due-badge" id="m-due-badge"></span>
+        </div>
+
+        <label class="field-label">ラベル</label>
+        <div class="label-row" id="m-labels"></div>
+
+        <div class="field-row checklist-head">
+          <label class="field-label">チェックリスト</label>
+          <span class="progress-text" id="m-progress-text"></span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="m-progress-fill"></div></div>
+
+        <ul class="checklist" id="m-checklist"></ul>
+        <button class="btn btn-ghost add-item-btn" id="m-add-item">＋ 項目を追加</button>
+      </div>
+
+      <div class="modal-foot">
+        <button class="btn btn-danger" id="m-delete">削除</button>
+        <button class="btn btn-primary" id="m-save">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

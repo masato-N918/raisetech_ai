@@ -1,0 +1,449 @@
+/* ===== 共通・デザイン変数 ===== */
+:root {
+  --bg: #f4f5f7;
+  --header-bg: #026aa7;
+  --header-text: #ffffff;
+  --list-bg: #ebecf0;
+  --card-bg: #ffffff;
+  --text: #172b4d;
+  --text-sub: #5e6c84;
+  --border: #dfe1e6;
+  --primary: #0079bf;
+  --primary-hover: #026aa7;
+  --danger: #eb5a46;
+  --label-red: #eb5a46;
+  --label-yellow: #f2d600;
+  --label-green: #61bd4f;
+  --due-over-bg: #ffebe6;
+  --due-over: #de350b;
+  --due-soon-bg: #fffae6;
+  --due-soon: #ff8b00;
+  --shadow: 0 1px 2px rgba(9,30,66,.25);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Hiragino Kaku Gothic ProN", "Meiryo", "Yu Gothic", system-ui, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+/* ===== 画面切替 ===== */
+.screen { display: none; min-height: 100vh; flex-direction: column; }
+.screen.is-active { display: flex; }
+
+/* ===== ヘッダー共通 ===== */
+.app-header {
+  background: var(--header-bg);
+  color: var(--header-text);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.app-title { font-size: 18px; margin: 0; font-weight: 600; }
+
+/* ===== ボタン共通 ===== */
+.btn {
+  border: none;
+  border-radius: 4px;
+  padding: 8px 14px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-ghost { background: rgba(9,30,66,.06); color: var(--text-sub); }
+.btn-ghost:hover { background: rgba(9,30,66,.12); }
+
+/* =========================================== */
+/* S-1 ボード一覧画面                           */
+/* =========================================== */
+.boards-main { padding: 28px 32px; }
+.boards-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.boards-heading h2 { font-size: 18px; margin: 0; }
+
+.board-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  max-width: 900px;
+}
+.board-card {
+  position: relative;
+  height: 100px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #0079bf, #5067c5);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: left;
+  padding: 14px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.board-card:hover { filter: brightness(1.05); }
+.board-card-del {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 22px;
+  height: 22px;
+  line-height: 20px;
+  text-align: center;
+  border-radius: 4px;
+  background: rgba(0,0,0,.2);
+  font-weight: 400;
+}
+.board-card-del:hover { background: rgba(0,0,0,.4); }
+
+.empty-message {
+  color: var(--text-sub);
+  background: #fff;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+  max-width: 900px;
+}
+
+/* =========================================== */
+/* S-2 ボード画面                               */
+/* =========================================== */
+.board-header { justify-content: flex-start; }
+.btn-back {
+  background: rgba(255,255,255,.2);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.btn-back:hover { background: rgba(255,255,255,.35); }
+.board-name { cursor: pointer; }
+.board-tools { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+.search-box {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 4px;
+  padding: 0 8px;
+}
+.search-icon { font-size: 13px; }
+.search-input { border: none; outline: none; padding: 6px; font-size: 14px; }
+.label-filter { border: none; border-radius: 4px; padding: 6px 8px; font-size: 14px; }
+
+.board-main { flex: 1; padding: 20px; overflow-x: auto; }
+.lists { display: flex; align-items: flex-start; gap: 14px; }
+
+.list {
+  background: var(--list-bg);
+  border-radius: 8px;
+  width: 272px;
+  flex: 0 0 auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px;
+  cursor: grab;
+}
+.list-head:active { cursor: grabbing; }
+.list.dragging-list { opacity: .5; }
+.list-title { font-weight: 600; font-size: 14px; }
+.list-title-input {
+  font-weight: 600;
+  font-size: 14px;
+  font-family: inherit;
+  border: 1px solid var(--primary);
+  border-radius: 4px;
+  padding: 2px 6px;
+  width: 140px;
+}
+.list-title-input:focus { outline: none; }
+.list-actions { display: flex; gap: 2px; }
+.icon-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-sub);
+  font-size: 13px;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+.icon-btn:hover { background: rgba(9,30,66,.1); }
+
+.list-cards { display: flex; flex-direction: column; gap: 8px; }
+.card {
+  background: var(--card-bg);
+  border-radius: 6px;
+  padding: 8px 10px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+.card:hover { background: #f8f9fb; }
+.card.dragging { opacity: .4; }
+.card-title { font-size: 14px; margin-top: 2px; }
+.label-dots { display: flex; gap: 4px; margin-bottom: 2px; }
+.list-cards { min-height: 8px; } /* 空リストにもドロップできるよう高さ確保 */
+.card-meta { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+
+.label-dot {
+  display: inline-block;
+  width: 36px;
+  height: 7px;
+  border-radius: 4px;
+}
+.label-red { background: var(--label-red); }
+.label-yellow { background: var(--label-yellow); }
+.label-green { background: var(--label-green); }
+
+/* 期限の強調 */
+.due, .check-progress {
+  font-size: 12px;
+  color: var(--text-sub);
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(9,30,66,.06);
+}
+.due-soon { background: var(--due-soon-bg); color: var(--due-soon); }
+.due-over { background: var(--due-over-bg); color: var(--due-over); }
+
+/* 優先度バッジ */
+.priority-badge {
+  font-size: 12px;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+/* カード追加のインライン入力 */
+.card-add-form { display: flex; flex-direction: column; gap: 6px; }
+.card-add-input {
+  width: 100%;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  box-shadow: var(--shadow);
+}
+.card-add-input:focus { outline: 2px solid var(--primary); }
+.card-add-actions { display: flex; align-items: center; gap: 6px; }
+
+.add-card-btn, .add-list-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-sub);
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.add-card-btn:hover { background: rgba(9,30,66,.08); }
+
+.add-list {
+  width: 272px;
+  flex: 0 0 auto;
+  background: rgba(9,30,66,.08);
+  border-radius: 8px;
+}
+.add-list-btn { width: 100%; }
+.add-list-btn:hover { background: rgba(9,30,66,.12); }
+
+.dnd-hint { color: var(--text-sub); font-size: 12px; margin-top: 16px; }
+
+/* =========================================== */
+/* S-3 カード詳細モーダル                        */
+/* =========================================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(9,30,66,.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 16px;
+  overflow-y: auto;
+  z-index: 100;
+}
+/* hidden 属性のときは確実に非表示にする（display:flex の上書き対策） */
+.modal-overlay[hidden] { display: none; }
+.modal {
+  background: #fff;
+  width: 100%;
+  max-width: 560px;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(9,30,66,.4);
+}
+.modal.modal-sm { max-width: 420px; }
+.modal-foot-end { justify-content: flex-end; gap: 10px; }
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-head h2 { margin: 0; font-size: 17px; }
+.modal-close { font-size: 18px; }
+
+.modal-body { padding: 16px 20px; }
+.field-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-sub);
+  margin: 14px 0 4px;
+}
+.field-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-family: inherit;
+}
+textarea.field-input { resize: vertical; }
+.field-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.date-input { width: auto; }
+.due-badge {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.label-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.label-chip {
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 14px;
+  color: #172b4d;
+}
+.label-chip { cursor: pointer; user-select: none; }
+.label-chip.label-red { background: var(--due-over-bg); }
+.label-chip.label-yellow { background: var(--due-soon-bg); }
+.label-chip.label-green { background: #e3fcef; }
+
+/* ラベル選択メニュー */
+.label-add-wrap { position: relative; display: inline-block; }
+.label-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 10;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(9,30,66,.25);
+  padding: 6px;
+  min-width: 160px;
+}
+.label-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.label-menu-row:hover { background: rgba(9,30,66,.06); }
+.label-swatch { width: 28px; height: 14px; border-radius: 3px; display: inline-block; }
+
+/* 新しいラベル作成フォーム */
+.label-menu-divider {
+  font-size: 11px;
+  color: var(--text-sub);
+  padding: 8px 8px 4px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+}
+.label-new-form { padding: 4px 8px 6px; display: flex; flex-direction: column; gap: 6px; }
+.label-new-name {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+.label-color-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.color-swatch {
+  width: 22px; height: 22px;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+.color-swatch.is-picked { border-color: #172b4d; box-shadow: 0 0 0 1px #fff inset; }
+.label-new-btn { font-size: 13px; padding: 6px 10px; }
+
+/* チェック項目のインライン入力 */
+.checklist-input-row { padding: 4px 0; }
+.checklist-input {
+  width: 100%;
+  border: 1px solid var(--primary);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 14px;
+  font-family: inherit;
+}
+.checklist-input:focus { outline: none; }
+
+/* リスト追加のインライン入力 */
+.list-add-form { display: flex; flex-direction: column; gap: 6px; padding: 4px; }
+.list-add-input {
+  border: none;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-family: inherit;
+  box-shadow: var(--shadow);
+}
+.list-add-input:focus { outline: 2px solid var(--primary); }
+.list-add-actions { display: flex; align-items: center; gap: 6px; }
+
+.checklist-head { justify-content: space-between; margin-top: 8px; }
+.progress-text { font-size: 12px; color: var(--text-sub); }
+.progress-bar {
+  background: var(--border);
+  border-radius: 4px;
+  height: 8px;
+  margin: 8px 0;
+  overflow: hidden;
+}
+.progress-fill { background: var(--label-green); height: 100%; }
+
+.checklist { list-style: none; padding: 0; margin: 8px 0; }
+.checklist li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+.checklist label { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.add-item-btn { margin-top: 4px; }
+
+.modal-foot {
+  display: flex;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+}
