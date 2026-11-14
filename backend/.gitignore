@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### 環境変数（接続情報など・コミットしない。雛形は .env.example） ###
+.env
