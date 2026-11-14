@@ -1,0 +1,6 @@
+plugins {
+	// JDK 25 などのツールチェーンを Gradle が自動ダウンロードできるようにする
+	id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+rootProject.name = 'taskboard'
