@@ -114,6 +114,29 @@ public class CardRepository {
     }
 
     /**
+     * 指定リストのカードIDを position 昇順で取得する。
+     *
+     * <p>並び替え・移動時に、リスト内の順序を組み替えるために使う。</p>
+     */
+    public List<UUID> findIdsByList(UUID listId) {
+        return jdbcTemplate.query(
+                "SELECT id FROM card WHERE list_id = ? ORDER BY position",
+                (rs, rowNum) -> rs.getObject("id", java.util.UUID.class),
+                listId);
+    }
+
+    /**
+     * カードの所属リストと position を更新する（内容は変更しない）。
+     *
+     * <p>並び替え・移動時に、リスト内の各カードへ 0..n の position を振り直すために使う。</p>
+     */
+    public void setListAndPosition(UUID id, UUID listId, int position) {
+        jdbcTemplate.update(
+                "UPDATE card SET list_id = ?, position = ? WHERE id = ?",
+                listId, position, id);
+    }
+
+    /**
      * カードを1件更新し、更新後の {@link Card} を返す。
      *
      * <p>対象 id の存在は呼び出し側（{@link CardService}）で確認済みの前提。
