@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
-import { createCard, fetchCards, moveCard, updateCard } from './api'
+import { createCard, fetchCards, moveCard, reorderCards, updateCard } from './api'
 import { LISTS, listTitle } from './lists'
 import type { Card, NewCard, Priority } from './types'
 
@@ -11,6 +11,33 @@ const PRIORITY_CLASS: Record<Priority, string> = {
 }
 
 const PRIORITIES: Priority[] = ['高', '中', '低']
+
+// 優先度の強さ（高いほど大きい。なしは 0）
+const PRIORITY_RANK: Record<Priority, number> = { 高: 3, 中: 2, 低: 1 }
+const rankOf = (p: Priority | null) => (p ? PRIORITY_RANK[p] : 0)
+
+type SortKey = 'due' | 'priority'
+type SortDir = 'asc' | 'desc'
+
+// 期限で比較（期限なしは常に末尾）
+function compareByDue(a: Card, b: Card, dir: SortDir): number {
+  if (!a.dueDate && !b.dueDate) return 0
+  if (!a.dueDate) return 1
+  if (!b.dueDate) return -1
+  return dir === 'asc'
+    ? a.dueDate.localeCompare(b.dueDate)
+    : b.dueDate.localeCompare(a.dueDate)
+}
+
+// 優先度で比較（優先度なしは常に末尾。desc=高い順 / asc=低い順）
+function compareByPriority(a: Card, b: Card, dir: SortDir): number {
+  const ra = rankOf(a.priority)
+  const rb = rankOf(b.priority)
+  if (ra === 0 && rb === 0) return 0
+  if (ra === 0) return 1
+  if (rb === 0) return -1
+  return dir === 'desc' ? rb - ra : ra - rb
+}
 
 // モーダルの状態。既存カードの編集(edit)か、新規追加(create)か。
 // create のときは「＋ カード追加」を押したリストの id を初期選択に使う。
@@ -304,6 +331,11 @@ function App() {
   const [modal, setModal] = useState<ModalState | null>(null)
   // ドラッグ中のカードID（null ならドラッグしていない）
   const [draggingId, setDraggingId] = useState<string | null>(null)
+  // リストごとの現在のソート方向（ボタン表示の矢印に使う）
+  // 例: { "<listId>": { due: 'asc', priority: 'desc' } }
+  const [sortDir, setSortDir] = useState<
+    Record<string, Partial<Record<SortKey, SortDir>>>
+  >({})
 
   // keyword / reloadKey の変化に応じて再取得（入力のたびに叩かないよう軽くdebounce）
   useEffect(() => {
@@ -388,6 +420,40 @@ function App() {
     moveTo(targetListId, siblings.length)
   }
 
+  // リストを key（期限/優先度）でソートし、結果を永続化する。
+  // 押すたびに方向をトグル（期限は初回=昇順、優先度は初回=高い順）。
+  async function sortList(listId: string, key: SortKey) {
+    const col = columns.find((c) => c.id === listId)
+    if (!col || col.cards.length < 2) return
+
+    const current = sortDir[listId]?.[key]
+    const dir: SortDir =
+      key === 'due'
+        ? current === 'asc'
+          ? 'desc'
+          : 'asc'
+        : current === 'desc'
+          ? 'asc'
+          : 'desc'
+
+    const sorted = [...col.cards].sort((a, b) =>
+      key === 'due' ? compareByDue(a, b, dir) : compareByPriority(a, b, dir),
+    )
+
+    setSortDir((s) => ({ ...s, [listId]: { ...s[listId], [key]: dir } }))
+
+    try {
+      await reorderCards(
+        listId,
+        sorted.map((c) => c.id),
+      )
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : '並べ替えに失敗しました')
+    } finally {
+      reload()
+    }
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -415,7 +481,37 @@ function App() {
               <section className="list" key={col.id}>
                 <div className="list-head">
                   <h2 className="list-title">{col.title}</h2>
-                  <span className="list-count">{col.cards.length}</span>
+                  <div className="list-tools">
+                    <button
+                      type="button"
+                      className="sort-btn"
+                      title="期限順に並べ替え"
+                      disabled={col.cards.length < 2}
+                      onClick={() => sortList(col.id, 'due')}
+                    >
+                      📅
+                      {sortDir[col.id]?.due === 'asc'
+                        ? '↑'
+                        : sortDir[col.id]?.due === 'desc'
+                          ? '↓'
+                          : '↕'}
+                    </button>
+                    <button
+                      type="button"
+                      className="sort-btn"
+                      title="優先度順に並べ替え"
+                      disabled={col.cards.length < 2}
+                      onClick={() => sortList(col.id, 'priority')}
+                    >
+                      ⚑
+                      {sortDir[col.id]?.priority === 'desc'
+                        ? '↓'
+                        : sortDir[col.id]?.priority === 'asc'
+                          ? '↑'
+                          : '↕'}
+                    </button>
+                    <span className="list-count">{col.cards.length}</span>
+                  </div>
                 </div>
                 <div
                   className={`list-cards${draggingId ? ' is-drop-target' : ''}`}
