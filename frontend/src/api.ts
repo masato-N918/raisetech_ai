@@ -36,3 +36,25 @@ export async function createCard(input: NewCard): Promise<Card> {
   }
   return (await res.json()) as Card
 }
+
+// カードを更新する（PUT /api/cards/{id}）。
+// 成功すると更新後のカードが返る。
+export async function updateCard(id: string, input: NewCard): Promise<Card> {
+  const res = await fetch(`/api/cards/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  if (!res.ok) {
+    // バックエンドは {"message": "..."} 形式でエラー内容を返すので、あれば利用する
+    let detail = ''
+    try {
+      const body = (await res.json()) as { message?: string }
+      if (body?.message) detail = `: ${body.message}`
+    } catch {
+      // JSON でなければ無視
+    }
+    throw new Error(`カードの更新に失敗しました (HTTP ${res.status})${detail}`)
+  }
+  return (await res.json()) as Card
+}
