@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -106,5 +107,20 @@ public class CardController {
     public List<Card> reorderCards(@PathVariable UUID listId,
             @Valid @RequestBody CardOrderRequest request) {
         return cardService.reorder(listId, request.cardIds());
+    }
+
+    /**
+     * カードを削除する。
+     *
+     * <p>{@code DELETE /api/cards/{id}} … パスのカードを物理削除し、{@code 204 No Content}
+     * を返す。子のチェック項目は DB の {@code ON DELETE CASCADE} で併せて削除される。
+     * 対象カードが無ければ {@code 404}（{@link GlobalExceptionHandler} に準拠）。</p>
+     *
+     * @param id 削除対象のカードID（パス変数）
+     */
+    @DeleteMapping("/api/cards/{id}")
+    public ResponseEntity<Void> deleteCard(@PathVariable UUID id) {
+        cardService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

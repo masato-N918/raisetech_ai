@@ -163,3 +163,13 @@ export async function deleteChecklistItem(id: string): Promise<void> {
     )
   }
 }
+
+// カードを削除する（DELETE /api/cards/{id}）。子のチェック項目はサーバ側で併せて削除される。
+export async function deleteCard(id: string): Promise<void> {
+  const res = await fetch(`/api/cards/${id}`, { method: 'DELETE' })
+  if (!res.ok) {
+    throw new Error(
+      `カードの削除に失敗しました (HTTP ${res.status})${await errorDetail(res)}`,
+    )
+  }
+}

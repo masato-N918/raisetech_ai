@@ -4,6 +4,7 @@ import './App.css'
 import {
   addChecklistItem,
   createCard,
+  deleteCard,
   deleteChecklistItem,
   fetchCards,
   moveCard,
@@ -165,6 +166,7 @@ function CardForm({
   onClose,
   onDone,
   children,
+  footerStart,
 }: {
   initial: FormValues
   submitLabel: string
@@ -175,6 +177,8 @@ function CardForm({
   onDone: (result: unknown) => void
   // フォーム項目の下（フッターの上）に差し込む追加要素（編集時のチェックリストなど）
   children?: ReactNode
+  // フッター左端に差し込む要素（編集時の削除ボタンなど）
+  footerStart?: ReactNode
 }) {
   const [listId, setListId] = useState(initial.listId || LISTS[0]?.id || '')
   const [title, setTitle] = useState(initial.title)
@@ -285,17 +289,20 @@ function CardForm({
         {children}
       </div>
 
-      <div className="modal-foot modal-foot-end">
-        <button type="button" className="btn btn-ghost" onClick={onClose}>
-          キャンセル
-        </button>
-        <button
-          type="submit"
-          className="btn btn-primary"
-          disabled={!title.trim() || submitting}
-        >
-          {submitting ? pendingLabel : submitLabel}
-        </button>
+      <div className="modal-foot">
+        {footerStart}
+        <div className="modal-foot-right">
+          <button type="button" className="btn btn-ghost" onClick={onClose}>
+            キャンセル
+          </button>
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={!title.trim() || submitting}
+          >
+            {submitting ? pendingLabel : submitLabel}
+          </button>
+        </div>
       </div>
     </form>
   )
@@ -510,15 +517,85 @@ function PendingChecklist({
 }
 
 // カード詳細モーダル。edit（既存カードの編集）/ create（新規追加）の2モード。
+// 確認ダイアログ（削除などの不可逆操作の前に挟む）。
+// 既存のモーダルと同じ見た目を踏襲し、カード詳細モーダルの上に重ねて表示する。
+function ConfirmDialog({
+  message,
+  confirmLabel,
+  busy,
+  error,
+  onConfirm,
+  onCancel,
+}: {
+  message: string
+  confirmLabel: string
+  busy: boolean
+  error: string | null
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  // Escキーで閉じる（処理中は閉じない）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !busy) onCancel()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [busy, onCancel])
+
+  return (
+    <div
+      className="modal-overlay modal-overlay-top"
+      onClick={() => {
+        if (!busy) onCancel()
+      }}
+    >
+      <div
+        className="modal modal-confirm"
+        role="alertdialog"
+        aria-modal="true"
+        aria-label="確認"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal-body">
+          <p className="confirm-message">{message}</p>
+          {error && <p className="add-error">⚠ {error}</p>}
+        </div>
+        <div className="modal-foot modal-foot-end">
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={onCancel}
+            disabled={busy}
+          >
+            キャンセル
+          </button>
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={onConfirm}
+            disabled={busy}
+          >
+            {busy ? '削除中...' : confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function CardModal({
   state,
   onClose,
   onSaved,
+  onDeleted,
 }: {
   state: ModalState
   onClose: () => void
   // 保存後のカードを受け取り、盤面の該当カードだけを部分更新する
   onSaved: (card: Card) => void
+  // 削除後にカードIDを受け取り、盤面から該当カードを除去してモーダルを閉じる
+  onDeleted: (id: string) => void
 }) {
   // Escキーで閉じる
   useEffect(() => {
@@ -534,6 +611,24 @@ function CardModal({
 
   // 新規作成モーダルでローカルに溜めるチェック項目（作成成功後に登録する）
   const [pendingItems, setPendingItems] = useState<string[]>([])
+
+  // 削除の確認ダイアログ表示・送信中・エラー状態（編集モードのみ使用）
+  const [confirming, setConfirming] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  const handleDelete = async () => {
+    if (state.mode !== 'edit' || deleting) return
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await deleteCard(state.card.id)
+      onDeleted(state.card.id)
+    } catch (err: unknown) {
+      setDeleteError(err instanceof Error ? err.message : '削除に失敗しました')
+      setDeleting(false)
+    }
+  }
 
   // モードに応じた初期値と送信処理。
   const initial: FormValues = isCreate
@@ -582,6 +677,20 @@ function CardModal({
           onSubmit={handleSubmit}
           onClose={onClose}
           onDone={(saved) => onSaved(saved as Card)}
+          footerStart={
+            state.mode === 'edit' ? (
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={() => {
+                  setDeleteError(null)
+                  setConfirming(true)
+                }}
+              >
+                削除
+              </button>
+            ) : undefined
+          }
         >
           {state.mode === 'edit' ? (
             <CardChecklist
@@ -595,6 +704,21 @@ function CardModal({
           )}
         </CardForm>
       </div>
+
+      {confirming && (
+        <ConfirmDialog
+          message="このカードを削除しますか？この操作は取り消せません。"
+          confirmLabel="削除"
+          busy={deleting}
+          error={deleteError}
+          onConfirm={handleDelete}
+          onCancel={() => {
+            if (deleting) return
+            setConfirming(false)
+            setDeleteError(null)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -686,6 +810,10 @@ function App() {
       }
       return prev.map((c) => (c.id === card.id ? merged : c))
     })
+
+  // 盤面から該当カードを除去する（削除後。全件再取得せず部分更新する）。
+  const removeCard = (id: string) =>
+    setCards((prev) => prev.filter((c) => c.id !== id))
 
   // ドラッグ中のカードを、targetListId の targetIndex 番目へ移動する。
   async function moveTo(targetListId: string, targetIndex: number) {
@@ -862,6 +990,10 @@ function App() {
           state={modal}
           onClose={() => setModal(null)}
           onSaved={upsertCard}
+          onDeleted={(id) => {
+            removeCard(id)
+            setModal(null)
+          }}
         />
       )}
     </div>

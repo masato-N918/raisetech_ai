@@ -163,4 +163,15 @@ public class CardRepository {
                 CARD_ROW_MAPPER,
                 listId, title, description, dueDate, priority, position, id);
     }
+
+    /**
+     * カードを1件削除し、削除した行数（0 or 1）を返す。
+     *
+     * <p>子の {@code checklist_item}・{@code card_label} 行は DB の
+     * {@code ON DELETE CASCADE} により自動的に削除される。対象が無いこと（戻り値 0）の
+     * 判定・例外化は呼び出し側（{@link CardService}）で行う。</p>
+     */
+    public int deleteById(UUID id) {
+        return jdbcTemplate.update("DELETE FROM card WHERE id = ?", id);
+    }
 }

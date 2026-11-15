@@ -489,6 +489,13 @@ textarea.field-input {
   justify-content: flex-end;
 }
 
+/* フッター右側のボタン群（左端の削除ボタンと対置する） */
+.modal-foot-right {
+  margin-left: auto;
+  display: flex;
+  gap: 10px;
+}
+
 /* ボタン共通 */
 .btn {
   border: none;
@@ -520,4 +527,29 @@ textarea.field-input {
 
 .btn-ghost:hover {
   background: rgba(9, 30, 66, 0.12);
+}
+
+.btn-danger {
+  background: #c0392b;
+  color: #fff;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #a5281b;
+}
+
+/* 確認ダイアログ（カード詳細モーダルの上に重ねる） */
+.modal-overlay-top {
+  z-index: 110;
+}
+
+.modal-confirm {
+  max-width: 420px;
+}
+
+.confirm-message {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text);
 }

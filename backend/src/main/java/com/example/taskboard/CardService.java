@@ -183,4 +183,21 @@ public class CardService {
 
         return cardRepository.findByList(listId);
     }
+
+    /**
+     * カードを削除する（物理削除）。
+     *
+     * <p>子のチェック項目・ラベル紐付けは DB の {@code ON DELETE CASCADE} により
+     * 併せて削除される。残ったカードの position は詰め直さない（昇順の順序は保たれ、
+     * 欠番があっても表示に影響しないため）。</p>
+     *
+     * @param id 削除対象のカードID
+     * @throws NotFoundException 対象カードが存在しない場合
+     */
+    public void delete(UUID id) {
+        int rows = cardRepository.deleteById(id);
+        if (rows == 0) {
+            throw new NotFoundException("指定されたカードが存在しません: " + id);
+        }
+    }
 }
