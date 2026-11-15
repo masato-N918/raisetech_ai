@@ -40,7 +40,7 @@ public class CardController {
      * @param keyword 検索語（任意）
      */
     @GetMapping("/api/cards")
-    public List<Card> getCards(@RequestParam(required = false) String keyword) {
+    public List<CardListItem> getCards(@RequestParam(required = false) String keyword) {
         return cardService.find(keyword);
     }
 

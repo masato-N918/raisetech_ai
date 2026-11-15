@@ -2,7 +2,9 @@ package com.example.taskboard;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,23 +18,32 @@ import org.springframework.transaction.annotation.Transactional;
 public class CardService {
 
     private final CardRepository cardRepository;
+    private final ChecklistItemRepository checklistItemRepository;
 
-    public CardService(CardRepository cardRepository) {
+    public CardService(CardRepository cardRepository,
+            ChecklistItemRepository checklistItemRepository) {
         this.cardRepository = cardRepository;
+        this.checklistItemRepository = checklistItemRepository;
     }
 
     /**
-     * カードを取得する。
+     * カードを取得する（各カードにチェック項目を同梱する）。
      *
      * <p>キーワードが未指定（null）または空白のみなら全件、指定があればキーワード検索を行う。</p>
      *
      * @param keyword 検索語（任意）
      */
-    public List<Card> find(String keyword) {
-        if (keyword == null || keyword.isBlank()) {
-            return cardRepository.findAll();
-        }
-        return cardRepository.search(keyword.trim());
+    public List<CardListItem> find(String keyword) {
+        List<Card> cards = (keyword == null || keyword.isBlank())
+                ? cardRepository.findAll()
+                : cardRepository.search(keyword.trim());
+
+        Map<UUID, List<ChecklistItem>> itemsByCard = checklistItemRepository.findAll().stream()
+                .collect(Collectors.groupingBy(ChecklistItem::cardId));
+
+        return cards.stream()
+                .map(c -> CardListItem.of(c, itemsByCard.getOrDefault(c.id(), List.of())))
+                .toList();
     }
 
     /**
