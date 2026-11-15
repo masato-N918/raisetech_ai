@@ -12,6 +12,7 @@ export interface ListInfo {
 export const LISTS: ListInfo[] = [
   { id: '22222222-2222-2222-2222-222222222201', title: 'ToDo' },
   { id: '22222222-2222-2222-2222-222222222202', title: 'Doing' },
+  { id: '22222222-2222-2222-2222-222222222203', title: 'Done' },
 ]
 
 const TITLE_BY_ID = new Map(LISTS.map((l) => [l.id, l.title]))
