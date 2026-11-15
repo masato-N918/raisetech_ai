@@ -53,62 +53,26 @@
   overflow-x: auto;
 }
 
-/* ===== カード登録フォーム ===== */
-.add-card {
-  background: var(--list-bg);
-  border-radius: 10px;
-  padding: 12px;
-  margin-bottom: 16px;
-  max-width: 720px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.add-card-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.add-field {
-  border: 1px solid rgba(9, 30, 66, 0.2);
-  border-radius: 6px;
-  padding: 7px 10px;
-  font-size: 14px;
-  color: var(--text);
-  background: var(--card-bg);
-  outline: none;
-}
-
-.add-title {
-  flex: 1;
-  min-width: 180px;
-}
-
-.add-desc {
-  flex: 1;
-  min-width: 180px;
-}
-
-.add-submit {
+/* ===== カード追加ボタン（各リスト下） ===== */
+.add-card-btn {
+  width: 100%;
+  margin-top: 8px;
   border: none;
+  background: transparent;
+  color: var(--text-sub);
+  text-align: left;
+  padding: 7px 8px;
   border-radius: 6px;
-  padding: 7px 18px;
-  font-size: 14px;
-  font-weight: 700;
-  color: #fff;
-  background: #4b9e4b;
   cursor: pointer;
+  font-size: 14px;
 }
 
-.add-submit:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.add-card-btn:hover {
+  background: rgba(9, 30, 66, 0.08);
 }
 
 .add-error {
-  margin: 0;
+  margin: 4px 0 0;
   font-size: 13px;
   color: #c0392b;
 }
@@ -314,4 +278,74 @@
 
 .field-desc {
   line-height: 1.6;
+}
+
+/* 新規追加モードの入力欄 */
+.field-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--card-bg);
+}
+
+.field-input:focus {
+  outline: 2px solid #0079bf;
+  outline-offset: -1px;
+}
+
+textarea.field-input {
+  resize: vertical;
+}
+
+.date-input {
+  width: auto;
+}
+
+/* モーダルのフッター */
+.modal-foot {
+  display: flex;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  gap: 10px;
+}
+
+.modal-foot-end {
+  justify-content: flex-end;
+}
+
+/* ボタン共通 */
+.btn {
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: #0079bf;
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #026aa7;
+}
+
+.btn-ghost {
+  background: rgba(9, 30, 66, 0.06);
+  color: var(--text-sub);
+}
+
+.btn-ghost:hover {
+  background: rgba(9, 30, 66, 0.12);
 }
