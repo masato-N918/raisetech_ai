@@ -3,6 +3,14 @@
 
 export type Priority = '高' | '中' | '低'
 
+// チェック項目（カードに属するチェックリストの1項目）。
+export interface ChecklistItem {
+  id: string // UUID
+  cardId: string // UUID（所属カード）
+  content: string
+  done: boolean
+}
+
 export interface Card {
   id: string // UUID
   listId: string // UUID（所属リスト）
@@ -11,6 +19,7 @@ export interface Card {
   dueDate: string | null // "yyyy-MM-dd"
   priority: Priority | null
   position: number // リスト内の表示順
+  checklistItems?: ChecklistItem[] // GET /api/cards で同梱される
 }
 
 // POST /api/cards のリクエストボディ。

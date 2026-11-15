@@ -1,4 +1,4 @@
-import type { Card, NewCard } from './types'
+import type { Card, ChecklistItem, NewCard } from './types'
 
 // カード一覧／検索を取得する。
 // keyword を渡すと title/description の部分一致で絞り込む（バックエンド側で処理）。
@@ -106,4 +106,60 @@ export async function reorderCards(
     throw new Error(`カードの並べ替えに失敗しました (HTTP ${res.status})${detail}`)
   }
   return (await res.json()) as Card[]
+}
+
+// エラーレスポンス（{"message": "..."}）からメッセージを取り出す補助。
+async function errorDetail(res: Response): Promise<string> {
+  try {
+    const body = (await res.json()) as { message?: string }
+    return body?.message ? `: ${body.message}` : ''
+  } catch {
+    return ''
+  }
+}
+
+// チェック項目を追加する（POST /api/cards/{cardId}/checklist-items）。
+export async function addChecklistItem(
+  cardId: string,
+  content: string,
+): Promise<ChecklistItem> {
+  const res = await fetch(`/api/cards/${cardId}/checklist-items`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  })
+  if (!res.ok) {
+    throw new Error(
+      `チェック項目の追加に失敗しました (HTTP ${res.status})${await errorDetail(res)}`,
+    )
+  }
+  return (await res.json()) as ChecklistItem
+}
+
+// チェック項目を更新する（PATCH /api/checklist-items/{id}）。内容変更・完了トグル。
+export async function updateChecklistItem(
+  id: string,
+  patch: { content?: string; done?: boolean },
+): Promise<ChecklistItem> {
+  const res = await fetch(`/api/checklist-items/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  })
+  if (!res.ok) {
+    throw new Error(
+      `チェック項目の更新に失敗しました (HTTP ${res.status})${await errorDetail(res)}`,
+    )
+  }
+  return (await res.json()) as ChecklistItem
+}
+
+// チェック項目を削除する（DELETE /api/checklist-items/{id}）。
+export async function deleteChecklistItem(id: string): Promise<void> {
+  const res = await fetch(`/api/checklist-items/${id}`, { method: 'DELETE' })
+  if (!res.ok) {
+    throw new Error(
+      `チェック項目の削除に失敗しました (HTTP ${res.status})${await errorDetail(res)}`,
+    )
+  }
 }
