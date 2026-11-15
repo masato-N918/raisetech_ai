@@ -2,6 +2,7 @@ package com.example.taskboard;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -61,6 +62,19 @@ public class CardRepository {
     }
 
     /**
+     * id でカードを1件取得する（存在しなければ空）。
+     *
+     * <p>更新時に対象カードの存在確認・現在の所属リスト/position の参照に使う。</p>
+     */
+    public Optional<Card> findById(UUID id) {
+        List<Card> rows = jdbcTemplate.query(
+                "SELECT id, list_id, title, description, due_date, priority, position"
+                        + " FROM card WHERE id = ?",
+                CARD_ROW_MAPPER, id);
+        return rows.stream().findFirst();
+    }
+
+    /**
      * 指定したリストが存在するかを返す。
      *
      * <p>存在しないリストへのカード登録を事前に弾くために使う。</p>
@@ -97,5 +111,23 @@ public class CardRepository {
                         + " RETURNING id, list_id, title, description, due_date, priority, position",
                 CARD_ROW_MAPPER,
                 listId, title, description, dueDate, priority, position);
+    }
+
+    /**
+     * カードを1件更新し、更新後の {@link Card} を返す。
+     *
+     * <p>対象 id の存在は呼び出し側（{@link CardService}）で確認済みの前提。
+     * {@code RETURNING} で更新後の行をそのまま取得する。</p>
+     */
+    public Card update(UUID id, UUID listId, String title, String description,
+            LocalDate dueDate, String priority, int position) {
+        return jdbcTemplate.queryForObject(
+                "UPDATE card"
+                        + " SET list_id = ?, title = ?, description = ?, due_date = ?,"
+                        + " priority = ?, position = ?"
+                        + " WHERE id = ?"
+                        + " RETURNING id, list_id, title, description, due_date, priority, position",
+                CARD_ROW_MAPPER,
+                listId, title, description, dueDate, priority, position, id);
     }
 }
