@@ -1,5 +1,6 @@
 package com.example.taskboard;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -137,5 +138,38 @@ public class CardService {
 
         return cardRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("指定されたカードが存在しません: " + id));
+    }
+
+    /**
+     * リスト内カードの並び順をまとめて更新する。
+     *
+     * <p>指定された {@code cardIds} の順序どおりに position を 0..n へ振り直す。
+     * {@code cardIds} はそのリストの現在のカード構成と過不足なく一致している必要がある
+     * （重複・別リストのID混入・数の不一致は不正）。整合性のため1トランザクションで実施する。</p>
+     *
+     * @param listId  並べ替え対象のリストID
+     * @param cardIds 希望する並び順のカードID配列
+     * @return 並べ替え後のリストのカード（position 昇順）
+     * @throws NotFoundException   リストが存在しない場合
+     * @throws BadRequestException cardIds がリストの現在の構成と一致しない場合
+     */
+    @Transactional
+    public List<Card> reorder(UUID listId, List<UUID> cardIds) {
+        if (!cardRepository.listExists(listId)) {
+            throw new NotFoundException("指定されたリストが存在しません: " + listId);
+        }
+
+        List<UUID> current = cardRepository.findIdsByList(listId);
+        // 集合として一致し、かつ重複が無い（＝サイズも一致）ことを確認する。
+        if (cardIds.size() != current.size()
+                || !new HashSet<>(cardIds).equals(new HashSet<>(current))) {
+            throw new BadRequestException("cardIds がリストの現在のカード構成と一致しません");
+        }
+
+        for (int i = 0; i < cardIds.size(); i++) {
+            cardRepository.setListAndPosition(cardIds.get(i), listId, i);
+        }
+
+        return cardRepository.findByList(listId);
     }
 }

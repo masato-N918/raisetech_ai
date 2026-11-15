@@ -90,4 +90,21 @@ public class CardController {
             @Valid @RequestBody CardMoveRequest request) {
         return cardService.move(id, request.listId(), request.position());
     }
+
+    /**
+     * リスト内カードの並び順をまとめて更新する。
+     *
+     * <p>{@code PUT /api/lists/{listId}/card-order} … ボディの {@code cardIds} の順序で
+     * リスト内の position を振り直し、並べ替え後のカードを {@code 200 OK} で返す。
+     * リストが無ければ {@code 404}、{@code cardIds} がリストの現在の構成と一致しなければ
+     * {@code 400}。期限順・優先度順ソートの結果を永続化する用途で使う。</p>
+     *
+     * @param listId  並べ替え対象のリストID（パス変数）
+     * @param request 希望する並び順のカードID配列
+     */
+    @PutMapping("/api/lists/{listId}/card-order")
+    public List<Card> reorderCards(@PathVariable UUID listId,
+            @Valid @RequestBody CardOrderRequest request) {
+        return cardService.reorder(listId, request.cardIds());
+    }
 }
