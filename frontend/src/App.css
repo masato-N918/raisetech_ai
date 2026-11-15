@@ -160,6 +160,16 @@
   border-radius: 8px;
   padding: 10px 12px;
   box-shadow: var(--shadow);
+  cursor: pointer;
+}
+
+.card:hover {
+  background: #f8f9fb;
+}
+
+.card:focus-visible {
+  outline: 2px solid #0079bf;
+  outline-offset: 1px;
 }
 
 .card-top {
@@ -227,4 +237,81 @@
   text-align: center;
   padding: 8px 0;
   margin: 0;
+}
+
+/* ===== カード詳細モーダル ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 30, 66, 0.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 16px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.modal {
+  background: #fff;
+  width: 100%;
+  max-width: 560px;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(9, 30, 66, 0.4);
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-heading {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.modal-close {
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--text-sub);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.modal-close:hover {
+  background: rgba(9, 30, 66, 0.08);
+}
+
+.modal-body {
+  padding: 16px 20px 20px;
+}
+
+.field-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-sub);
+  margin: 14px 0 4px;
+}
+
+.field-label:first-child {
+  margin-top: 0;
+}
+
+.field-value {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+.field-desc {
+  line-height: 1.6;
 }

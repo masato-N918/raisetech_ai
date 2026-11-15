@@ -115,9 +115,26 @@ function AddCardForm({ onCreated }: { onCreated: () => void }) {
   )
 }
 
-function CardItem({ card }: { card: Card }) {
+function CardItem({
+  card,
+  onOpen,
+}: {
+  card: Card
+  onOpen: (card: Card) => void
+}) {
   return (
-    <article className="card">
+    <article
+      className="card"
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpen(card)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onOpen(card)
+        }
+      }}
+    >
       <div className="card-top">
         <h3 className="card-title">{card.title}</h3>
         {card.priority && (
@@ -132,6 +149,58 @@ function CardItem({ card }: { card: Card }) {
   )
 }
 
+// カード詳細モーダル（表示のみ）。
+// 後続Issueで新規追加モード・更新(保存)をこのモーダルに載せていく。
+function CardModal({ card, onClose }: { card: Card; onClose: () => void }) {
+  // Escキーで閉じる
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  const hasDesc = !!card.description?.trim()
+
+  return (
+    // オーバーレイのクリックで閉じる。モーダル本体のクリックは伝播を止める。
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="カード詳細"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="modal-head">
+          <h2 className="modal-heading">カード詳細</h2>
+          <button className="modal-close" onClick={onClose} aria-label="閉じる">
+            ×
+          </button>
+        </div>
+
+        <div className="modal-body">
+          <span className="field-label">タイトル</span>
+          <p className="field-value">{card.title}</p>
+
+          <span className="field-label">リスト（状態）</span>
+          <p className="field-value">{listTitle(card.listId)}</p>
+
+          <span className="field-label">優先度</span>
+          <p className="field-value">{card.priority ?? 'なし'}</p>
+
+          <span className="field-label">説明</span>
+          <p className="field-value field-desc">{hasDesc ? card.description : '—'}</p>
+
+          <span className="field-label">期限</span>
+          <p className="field-value">{card.dueDate ?? '—'}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function App() {
   const [keyword, setKeyword] = useState('')
   const [cards, setCards] = useState<Card[]>([])
@@ -139,6 +208,8 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   // 登録後にインクリメントして一覧を再取得させるためのキー
   const [reloadKey, setReloadKey] = useState(0)
+  // 詳細モーダルで開いているカード（null なら閉じている）
+  const [selectedCard, setSelectedCard] = useState<Card | null>(null)
 
   // keyword / reloadKey の変化に応じて再取得（入力のたびに叩かないよう軽くdebounce）
   useEffect(() => {
@@ -230,7 +301,7 @@ function App() {
                 </div>
                 <div className="list-cards">
                   {col.cards.map((card) => (
-                    <CardItem card={card} key={card.id} />
+                    <CardItem card={card} key={card.id} onOpen={setSelectedCard} />
                   ))}
                   {col.cards.length === 0 && (
                     <p className="list-empty">カードなし</p>
@@ -241,6 +312,10 @@ function App() {
           </div>
         )}
       </main>
+
+      {selectedCard && (
+        <CardModal card={selectedCard} onClose={() => setSelectedCard(null)} />
+      )}
     </div>
   )
 }
