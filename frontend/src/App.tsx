@@ -16,6 +16,22 @@ const PRIORITIES: Priority[] = ['高', '中', '低']
 const PRIORITY_RANK: Record<Priority, number> = { 高: 3, 中: 2, 低: 1 }
 const rankOf = (p: Priority | null) => (p ? PRIORITY_RANK[p] : 0)
 
+// 期限("yyyy-MM-dd")を状態込みの表示情報に変換する。
+// over=期限切れ（今日より前）、soon=間近（今日〜3日以内）、ok=それ以外。
+function dueInfo(
+  due: string | null,
+): { label: string; cls: string } | null {
+  if (!due) return null
+  const [y, m, d] = due.split('-').map(Number)
+  if (!y || !m || !d) return { label: due, cls: 'due-ok' }
+  const date = new Date(y, m - 1, d)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const diffDays = Math.round((date.getTime() - today.getTime()) / 86400000)
+  const cls = diffDays < 0 ? 'due-over' : diffDays <= 3 ? 'due-soon' : 'due-ok'
+  return { label: `${m}/${d}`, cls }
+}
+
 type SortKey = 'due' | 'priority'
 type SortDir = 'asc' | 'desc'
 
@@ -109,7 +125,12 @@ function CardItem({
         )}
       </div>
       {card.description && <p className="card-desc">{card.description}</p>}
-      {card.dueDate && <span className="card-due">🗓 {card.dueDate}</span>}
+      {(() => {
+        const due = dueInfo(card.dueDate)
+        return due ? (
+          <span className={`card-due ${due.cls}`}>📅 {due.label}</span>
+        ) : null
+      })()}
     </article>
   )
 }
