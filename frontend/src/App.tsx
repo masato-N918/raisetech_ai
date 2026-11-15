@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import './App.css'
 import {
@@ -171,7 +171,8 @@ function CardForm({
   pendingLabel: string
   onSubmit: (input: NewCard) => Promise<unknown>
   onClose: () => void
-  onDone: () => void
+  // 保存成功時に、API が返した保存後データを渡す（盤面の部分更新に使う）
+  onDone: (result: unknown) => void
   // フォーム項目の下（フッターの上）に差し込む追加要素（編集時のチェックリストなど）
   children?: ReactNode
 }) {
@@ -198,8 +199,8 @@ function CardForm({
     setSubmitting(true)
     setError(null)
     try {
-      await onSubmit(input)
-      onDone()
+      const saved = await onSubmit(input)
+      onDone(saved)
       onClose()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : '保存に失敗しました')
@@ -304,10 +305,11 @@ function CardForm({
 // 追加・完了トグル・削除は即APIに反映し、ローカル状態と一覧（onChanged）を更新する。
 function CardChecklist({
   card,
-  onChanged,
+  onItemsChange,
 }: {
   card: Card
-  onChanged: () => void
+  // 変更後のチェック項目を親へ通知し、盤面の ☑ x/y を部分更新する
+  onItemsChange: (items: ChecklistItem[]) => void
 }) {
   const [items, setItems] = useState<ChecklistItem[]>(card.checklistItems ?? [])
   const [newContent, setNewContent] = useState('')
@@ -318,13 +320,18 @@ function CardChecklist({
   const done = items.filter((i) => i.done).length
   const percent = total === 0 ? 0 : Math.round((done / total) * 100)
 
+  // ローカル表示と盤面側カードを同時に更新する（全件再取得はしない）
+  const applyItems = (next: ChecklistItem[]) => {
+    setItems(next)
+    onItemsChange(next)
+  }
+
   async function run(action: () => Promise<void>) {
     if (busy) return
     setBusy(true)
     setError(null)
     try {
       await action()
-      onChanged() // 一覧の ☑ x/y を更新
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '操作に失敗しました')
     } finally {
@@ -338,7 +345,7 @@ function CardChecklist({
     if (!content || busy) return
     run(async () => {
       const created = await addChecklistItem(card.id, content)
-      setItems((prev) => [...prev, created])
+      applyItems([...items, created])
       setNewContent('')
     })
   }
@@ -346,13 +353,13 @@ function CardChecklist({
   const handleToggle = (item: ChecklistItem) =>
     run(async () => {
       const updated = await updateChecklistItem(item.id, { done: !item.done })
-      setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))
+      applyItems(items.map((i) => (i.id === updated.id ? updated : i)))
     })
 
   const handleDelete = (item: ChecklistItem) =>
     run(async () => {
       await deleteChecklistItem(item.id)
-      setItems((prev) => prev.filter((i) => i.id !== item.id))
+      applyItems(items.filter((i) => i.id !== item.id))
     })
 
   return (
@@ -510,7 +517,8 @@ function CardModal({
 }: {
   state: ModalState
   onClose: () => void
-  onSaved: () => void
+  // 保存後のカードを受け取り、盤面の該当カードだけを部分更新する
+  onSaved: (card: Card) => void
 }) {
   // Escキーで閉じる
   useEffect(() => {
@@ -539,13 +547,15 @@ function CardModal({
       }
 
   // 新規作成時はカード作成後、採番された id へ溜めた項目をまとめて登録する。
+  // 盤面の ☑ x/y にも反映されるよう、登録済み項目を含めたカードを返す。
   const handleSubmit = async (input: NewCard) => {
     if (!isCreate) return updateCard(state.card.id, input)
     const created = await createCard(input)
+    const createdItems: ChecklistItem[] = []
     for (const content of pendingItems) {
-      await addChecklistItem(created.id, content)
+      createdItems.push(await addChecklistItem(created.id, content))
     }
-    return created
+    return { ...created, checklistItems: createdItems }
   }
 
   return (
@@ -571,10 +581,15 @@ function CardModal({
           pendingLabel={isCreate ? '追加中...' : '保存中...'}
           onSubmit={handleSubmit}
           onClose={onClose}
-          onDone={onSaved}
+          onDone={(saved) => onSaved(saved as Card)}
         >
           {state.mode === 'edit' ? (
-            <CardChecklist card={state.card} onChanged={onSaved} />
+            <CardChecklist
+              card={state.card}
+              onItemsChange={(items) =>
+                onSaved({ ...state.card, checklistItems: items })
+              }
+            />
           ) : (
             <PendingChecklist items={pendingItems} setItems={setPendingItems} />
           )}
@@ -601,15 +616,22 @@ function App() {
     Record<string, Partial<Record<SortKey, SortDir>>>
   >({})
 
+  // 初回ロードを済ませたか（2回目以降は「読み込み中...」のチラつきを出さない）
+  const loadedOnce = useRef(false)
+
   // keyword / reloadKey の変化に応じて再取得（入力のたびに叩かないよう軽くdebounce）
   useEffect(() => {
     let cancelled = false
     const timer = setTimeout(() => {
-      setLoading(true)
+      // 初回だけ盤面を「読み込み中...」に差し替える。以降は既存表示を保つ。
+      if (!loadedOnce.current) setLoading(true)
       setError(null)
       fetchCards(keyword)
         .then((data) => {
-          if (!cancelled) setCards(data)
+          if (!cancelled) {
+            setCards(data)
+            loadedOnce.current = true
+          }
         })
         .catch((e: unknown) => {
           if (!cancelled)
@@ -650,6 +672,20 @@ function App() {
 
   const reload = () => setReloadKey((k) => k + 1)
   const isSearching = keyword.trim().length > 0
+
+  // 盤面の該当カードだけを差し替える（無ければ末尾に追加）。全件再取得の代わり。
+  // 更新API(PUT)は checklistItems を返さないため、未指定のときは既存の値を保持する
+  // （更新はチェックリストを変更しないので、消さずに引き継ぐのが正しい）。
+  const upsertCard = (card: Card) =>
+    setCards((prev) => {
+      const current = prev.find((c) => c.id === card.id)
+      if (!current) return [...prev, card]
+      const merged: Card = {
+        ...card,
+        checklistItems: card.checklistItems ?? current.checklistItems,
+      }
+      return prev.map((c) => (c.id === card.id ? merged : c))
+    })
 
   // ドラッグ中のカードを、targetListId の targetIndex 番目へ移動する。
   async function moveTo(targetListId: string, targetIndex: number) {
@@ -825,7 +861,7 @@ function App() {
         <CardModal
           state={modal}
           onClose={() => setModal(null)}
-          onSaved={reload}
+          onSaved={upsertCard}
         />
       )}
     </div>
