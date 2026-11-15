@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
-import { createCard, fetchCards, updateCard } from './api'
+import { createCard, fetchCards, moveCard, updateCard } from './api'
 import { LISTS, listTitle } from './lists'
 import type { Card, NewCard, Priority } from './types'
 
@@ -30,15 +30,41 @@ interface FormValues {
 function CardItem({
   card,
   onOpen,
+  draggingId,
+  onDragStart,
+  onDragEnd,
+  onDropBefore,
 }: {
   card: Card
   onOpen: (card: Card) => void
+  draggingId: string | null
+  onDragStart: (id: string) => void
+  onDragEnd: () => void
+  // このカードの直前に、ドラッグ中のカードをドロップする
+  onDropBefore: (beforeCardId: string) => void
 }) {
+  const isDragging = draggingId === card.id
   return (
     <article
-      className="card"
+      className={`card${isDragging ? ' dragging' : ''}`}
       role="button"
       tabIndex={0}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = 'move'
+        onDragStart(card.id)
+      }}
+      onDragEnd={onDragEnd}
+      onDragOver={(e) => {
+        // ドラッグ中のみドロップを許可する
+        if (draggingId) e.preventDefault()
+      }}
+      onDrop={(e) => {
+        if (!draggingId) return
+        e.preventDefault()
+        e.stopPropagation() // リストコンテナの「末尾へ」より優先する
+        onDropBefore(card.id)
+      }}
       onClick={() => onOpen(card)}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -276,6 +302,8 @@ function App() {
   const [reloadKey, setReloadKey] = useState(0)
   // 開いているモーダル（null なら閉じている）
   const [modal, setModal] = useState<ModalState | null>(null)
+  // ドラッグ中のカードID（null ならドラッグしていない）
+  const [draggingId, setDraggingId] = useState<string | null>(null)
 
   // keyword / reloadKey の変化に応じて再取得（入力のたびに叩かないよう軽くdebounce）
   useEffect(() => {
@@ -327,6 +355,39 @@ function App() {
   const reload = () => setReloadKey((k) => k + 1)
   const isSearching = keyword.trim().length > 0
 
+  // ドラッグ中のカードを、targetListId の targetIndex 番目へ移動する。
+  async function moveTo(targetListId: string, targetIndex: number) {
+    const id = draggingId
+    setDraggingId(null)
+    if (!id) return
+    try {
+      await moveCard(id, targetListId, targetIndex)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : '移動に失敗しました')
+    } finally {
+      reload()
+    }
+  }
+
+  // targetListId 内の beforeCardId の直前へドロップしたときの移動先 index を求めて移動する。
+  function dropBefore(targetListId: string, beforeCardId: string) {
+    if (!draggingId || beforeCardId === draggingId) return
+    const col = columns.find((c) => c.id === targetListId)
+    if (!col) return
+    const siblings = col.cards.filter((c) => c.id !== draggingId)
+    const idx = siblings.findIndex((c) => c.id === beforeCardId)
+    moveTo(targetListId, idx < 0 ? siblings.length : idx)
+  }
+
+  // リストの末尾（空白領域）へドロップしたときの移動。
+  function dropToEnd(targetListId: string) {
+    if (!draggingId) return
+    const col = columns.find((c) => c.id === targetListId)
+    if (!col) return
+    const siblings = col.cards.filter((c) => c.id !== draggingId)
+    moveTo(targetListId, siblings.length)
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -356,12 +417,26 @@ function App() {
                   <h2 className="list-title">{col.title}</h2>
                   <span className="list-count">{col.cards.length}</span>
                 </div>
-                <div className="list-cards">
+                <div
+                  className={`list-cards${draggingId ? ' is-drop-target' : ''}`}
+                  onDragOver={(e) => {
+                    if (draggingId) e.preventDefault()
+                  }}
+                  onDrop={(e) => {
+                    if (!draggingId) return
+                    e.preventDefault()
+                    dropToEnd(col.id)
+                  }}
+                >
                   {col.cards.map((card) => (
                     <CardItem
                       card={card}
                       key={card.id}
                       onOpen={(c) => setModal({ mode: 'edit', card: c })}
+                      draggingId={draggingId}
+                      onDragStart={setDraggingId}
+                      onDragEnd={() => setDraggingId(null)}
+                      onDropBefore={(beforeId) => dropBefore(col.id, beforeId)}
                     />
                   ))}
                   {col.cards.length === 0 && (

@@ -116,6 +116,15 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  /* 空リストでもドロップできるよう最低限の高さを確保する */
+  min-height: 12px;
+}
+
+/* ドラッグ中はドロップ先のリストを薄く強調する */
+.list-cards.is-drop-target {
+  border-radius: 6px;
+  outline: 2px dashed rgba(0, 121, 191, 0.4);
+  outline-offset: 2px;
 }
 
 /* ===== カード ===== */
@@ -134,6 +143,11 @@
 .card:focus-visible {
   outline: 2px solid #0079bf;
   outline-offset: 1px;
+}
+
+/* ドラッグ中のカード */
+.card.dragging {
+  opacity: 0.4;
 }
 
 .card-top {
