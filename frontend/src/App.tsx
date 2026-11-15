@@ -12,108 +12,11 @@ const PRIORITY_CLASS: Record<Priority, string> = {
 
 const PRIORITIES: Priority[] = ['高', '中', '低']
 
-// カード登録フォーム。登録に成功したら onCreated を呼んで一覧を再取得させる。
-function AddCardForm({ onCreated }: { onCreated: () => void }) {
-  const [listId, setListId] = useState(LISTS[0]?.id ?? '')
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [dueDate, setDueDate] = useState('')
-  const [priority, setPriority] = useState<Priority | ''>('')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!title.trim() || submitting) return
-
-    const input: NewCard = {
-      listId,
-      title: title.trim(),
-      description: description.trim() || null,
-      dueDate: dueDate || null,
-      priority: priority || null,
-    }
-
-    setSubmitting(true)
-    setError(null)
-    try {
-      await createCard(input)
-      // 入力をリセットして一覧を再取得
-      setTitle('')
-      setDescription('')
-      setDueDate('')
-      setPriority('')
-      onCreated()
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : '登録に失敗しました')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <form className="add-card" onSubmit={handleSubmit}>
-      <div className="add-card-row">
-        <select
-          className="add-field add-list"
-          value={listId}
-          onChange={(e) => setListId(e.target.value)}
-          aria-label="リスト"
-        >
-          {LISTS.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.title}
-            </option>
-          ))}
-        </select>
-        <input
-          type="text"
-          className="add-field add-title"
-          placeholder="カードのタイトル（必須）"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        <select
-          className="add-field add-prio"
-          value={priority}
-          onChange={(e) => setPriority(e.target.value as Priority | '')}
-          aria-label="優先度"
-        >
-          <option value="">優先度なし</option>
-          {PRIORITIES.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
-        <input
-          type="date"
-          className="add-field add-due"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-          aria-label="期限"
-        />
-      </div>
-      <div className="add-card-row">
-        <input
-          type="text"
-          className="add-field add-desc"
-          placeholder="説明（任意）"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-        <button
-          type="submit"
-          className="add-submit"
-          disabled={!title.trim() || submitting}
-        >
-          {submitting ? '登録中...' : '＋ 追加'}
-        </button>
-      </div>
-      {error && <p className="add-error">⚠ {error}</p>}
-    </form>
-  )
-}
+// モーダルの状態。既存カードの詳細表示(view)か、新規追加(create)か。
+// create のときは「＋ カード追加」を押したリストの id を初期選択に使う。
+type ModalState =
+  | { mode: 'view'; card: Card }
+  | { mode: 'create'; listId: string }
 
 function CardItem({
   card,
@@ -149,9 +52,172 @@ function CardItem({
   )
 }
 
-// カード詳細モーダル（表示のみ）。
-// 後続Issueで新規追加モード・更新(保存)をこのモーダルに載せていく。
-function CardModal({ card, onClose }: { card: Card; onClose: () => void }) {
+// 既存カードの詳細表示（読み取り専用）。
+function CardView({ card }: { card: Card }) {
+  const hasDesc = !!card.description?.trim()
+  return (
+    <div className="modal-body">
+      <span className="field-label">タイトル</span>
+      <p className="field-value">{card.title}</p>
+
+      <span className="field-label">リスト（状態）</span>
+      <p className="field-value">{listTitle(card.listId)}</p>
+
+      <span className="field-label">優先度</span>
+      <p className="field-value">{card.priority ?? 'なし'}</p>
+
+      <span className="field-label">説明</span>
+      <p className="field-value field-desc">{hasDesc ? card.description : '—'}</p>
+
+      <span className="field-label">期限</span>
+      <p className="field-value">{card.dueDate ?? '—'}</p>
+    </div>
+  )
+}
+
+// 新規カードの入力フォーム。登録成功で onCreated（一覧再取得）→ onClose。
+function CardCreateForm({
+  initialListId,
+  onClose,
+  onCreated,
+}: {
+  initialListId: string
+  onClose: () => void
+  onCreated: () => void
+}) {
+  const [listId, setListId] = useState(initialListId || LISTS[0]?.id || '')
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [dueDate, setDueDate] = useState('')
+  const [priority, setPriority] = useState<Priority | ''>('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!title.trim() || submitting) return
+
+    const input: NewCard = {
+      listId,
+      title: title.trim(),
+      description: description.trim() || null,
+      dueDate: dueDate || null,
+      priority: priority || null,
+    }
+
+    setSubmitting(true)
+    setError(null)
+    try {
+      await createCard(input)
+      onCreated()
+      onClose()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : '登録に失敗しました')
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div className="modal-body">
+        <label className="field-label" htmlFor="m-title">
+          タイトル
+        </label>
+        <input
+          id="m-title"
+          type="text"
+          className="field-input"
+          placeholder="カードのタイトル（必須）"
+          value={title}
+          autoFocus
+          onChange={(e) => setTitle(e.target.value)}
+        />
+
+        <label className="field-label" htmlFor="m-list">
+          リスト（状態）
+        </label>
+        <select
+          id="m-list"
+          className="field-input"
+          value={listId}
+          onChange={(e) => setListId(e.target.value)}
+        >
+          {LISTS.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.title}
+            </option>
+          ))}
+        </select>
+
+        <label className="field-label" htmlFor="m-prio">
+          優先度
+        </label>
+        <select
+          id="m-prio"
+          className="field-input"
+          value={priority}
+          onChange={(e) => setPriority(e.target.value as Priority | '')}
+        >
+          <option value="">なし</option>
+          {PRIORITIES.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+
+        <label className="field-label" htmlFor="m-desc">
+          説明
+        </label>
+        <textarea
+          id="m-desc"
+          className="field-input"
+          rows={3}
+          placeholder="説明（任意）"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+
+        <label className="field-label" htmlFor="m-due">
+          期限
+        </label>
+        <input
+          id="m-due"
+          type="date"
+          className="field-input date-input"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+        />
+
+        {error && <p className="add-error">⚠ {error}</p>}
+      </div>
+
+      <div className="modal-foot modal-foot-end">
+        <button type="button" className="btn btn-ghost" onClick={onClose}>
+          キャンセル
+        </button>
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={!title.trim() || submitting}
+        >
+          {submitting ? '追加中...' : '追加'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+// カード詳細モーダル。view（詳細表示）/ create（新規追加）の2モードを持つ。
+function CardModal({
+  state,
+  onClose,
+  onCreated,
+}: {
+  state: ModalState
+  onClose: () => void
+  onCreated: () => void
+}) {
   // Escキーで閉じる
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -161,7 +227,8 @@ function CardModal({ card, onClose }: { card: Card; onClose: () => void }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const hasDesc = !!card.description?.trim()
+  const isCreate = state.mode === 'create'
+  const heading = isCreate ? 'カードを追加' : 'カード詳細'
 
   return (
     // オーバーレイのクリックで閉じる。モーダル本体のクリックは伝播を止める。
@@ -170,32 +237,25 @@ function CardModal({ card, onClose }: { card: Card; onClose: () => void }) {
         className="modal"
         role="dialog"
         aria-modal="true"
-        aria-label="カード詳細"
+        aria-label={heading}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-head">
-          <h2 className="modal-heading">カード詳細</h2>
+          <h2 className="modal-heading">{heading}</h2>
           <button className="modal-close" onClick={onClose} aria-label="閉じる">
             ×
           </button>
         </div>
 
-        <div className="modal-body">
-          <span className="field-label">タイトル</span>
-          <p className="field-value">{card.title}</p>
-
-          <span className="field-label">リスト（状態）</span>
-          <p className="field-value">{listTitle(card.listId)}</p>
-
-          <span className="field-label">優先度</span>
-          <p className="field-value">{card.priority ?? 'なし'}</p>
-
-          <span className="field-label">説明</span>
-          <p className="field-value field-desc">{hasDesc ? card.description : '—'}</p>
-
-          <span className="field-label">期限</span>
-          <p className="field-value">{card.dueDate ?? '—'}</p>
-        </div>
+        {state.mode === 'create' ? (
+          <CardCreateForm
+            initialListId={state.listId}
+            onClose={onClose}
+            onCreated={onCreated}
+          />
+        ) : (
+          <CardView card={state.card} />
+        )}
       </div>
     </div>
   )
@@ -208,8 +268,8 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   // 登録後にインクリメントして一覧を再取得させるためのキー
   const [reloadKey, setReloadKey] = useState(0)
-  // 詳細モーダルで開いているカード（null なら閉じている）
-  const [selectedCard, setSelectedCard] = useState<Card | null>(null)
+  // 開いているモーダル（null なら閉じている）
+  const [modal, setModal] = useState<ModalState | null>(null)
 
   // keyword / reloadKey の変化に応じて再取得（入力のたびに叩かないよう軽くdebounce）
   useEffect(() => {
@@ -258,7 +318,8 @@ function App() {
     }))
   }, [cards])
 
-  const totalHits = cards.length
+  const reload = () => setReloadKey((k) => k + 1)
+  const isSearching = keyword.trim().length > 0
 
   return (
     <div className="app">
@@ -277,21 +338,11 @@ function App() {
       </header>
 
       <main className="board-main">
-        <AddCardForm onCreated={() => setReloadKey((k) => k + 1)} />
-
         {error && <p className="state-msg state-error">⚠ {error}</p>}
 
         {!error && loading && <p className="state-msg">読み込み中...</p>}
 
-        {!error && !loading && totalHits === 0 && (
-          <p className="state-msg">
-            {keyword.trim()
-              ? `「${keyword.trim()}」に該当するカードはありません。`
-              : 'カードがありません。'}
-          </p>
-        )}
-
-        {!error && !loading && totalHits > 0 && (
+        {!error && !loading && (
           <div className="lists">
             {columns.map((col) => (
               <section className="list" key={col.id}>
@@ -301,20 +352,40 @@ function App() {
                 </div>
                 <div className="list-cards">
                   {col.cards.map((card) => (
-                    <CardItem card={card} key={card.id} onOpen={setSelectedCard} />
+                    <CardItem
+                      card={card}
+                      key={card.id}
+                      onOpen={(c) => setModal({ mode: 'view', card: c })}
+                    />
                   ))}
                   {col.cards.length === 0 && (
-                    <p className="list-empty">カードなし</p>
+                    <p className="list-empty">
+                      {isSearching ? '該当なし' : 'カードなし'}
+                    </p>
                   )}
                 </div>
+                {/* 検索中は追加の起点を隠す（検索結果にカードを足す操作は紛らわしいため） */}
+                {!isSearching && (
+                  <button
+                    type="button"
+                    className="add-card-btn"
+                    onClick={() => setModal({ mode: 'create', listId: col.id })}
+                  >
+                    ＋ カード追加
+                  </button>
+                )}
               </section>
             ))}
           </div>
         )}
       </main>
 
-      {selectedCard && (
-        <CardModal card={selectedCard} onClose={() => setSelectedCard(null)} />
+      {modal && (
+        <CardModal
+          state={modal}
+          onClose={() => setModal(null)}
+          onCreated={reload}
+        />
       )}
     </div>
   )
