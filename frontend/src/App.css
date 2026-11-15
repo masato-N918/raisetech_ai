@@ -197,9 +197,24 @@
   line-height: 1.5;
 }
 
+.card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
 .card-due {
   display: inline-block;
-  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-sub);
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(9, 30, 66, 0.06);
+}
+
+.card-check {
+  display: inline-block;
   font-size: 12px;
   color: var(--text-sub);
   padding: 2px 6px;
@@ -333,6 +348,108 @@
 
 .field-desc {
   line-height: 1.6;
+}
+
+/* ===== モーダル内チェックリスト ===== */
+.checklist {
+  margin-top: 16px;
+}
+
+.checklist-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.checklist-progress-text {
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.checklist-bar {
+  background: var(--border);
+  border-radius: 4px;
+  height: 8px;
+  margin: 8px 0;
+  overflow: hidden;
+}
+
+.checklist-bar-fill {
+  background: #4b9e4b;
+  height: 100%;
+  transition: width 0.2s ease;
+}
+
+.checklist-items {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.checklist-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.checklist-done {
+  color: var(--text-sub);
+  text-decoration: line-through;
+}
+
+.checklist-del {
+  border: none;
+  background: transparent;
+  color: var(--text-sub);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.checklist-del:hover:not(:disabled) {
+  background: rgba(9, 30, 66, 0.1);
+}
+
+.checklist-add {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.checklist-input {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.checklist-input:focus {
+  outline: 2px solid #0079bf;
+  outline-offset: -1px;
+}
+
+.checklist-add-btn {
+  white-space: nowrap;
+}
+
+.checklist-note {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--text-sub);
 }
 
 /* 新規追加モードの入力欄 */

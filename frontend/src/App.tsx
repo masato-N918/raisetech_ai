@@ -1,8 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import './App.css'
-import { createCard, fetchCards, moveCard, reorderCards, updateCard } from './api'
+import {
+  addChecklistItem,
+  createCard,
+  deleteChecklistItem,
+  fetchCards,
+  moveCard,
+  reorderCards,
+  updateCard,
+  updateChecklistItem,
+} from './api'
 import { LISTS, listTitle } from './lists'
-import type { Card, NewCard, Priority } from './types'
+import type { Card, ChecklistItem, NewCard, Priority } from './types'
 
 const PRIORITY_CLASS: Record<Priority, string> = {
   高: 'prio-high',
@@ -127,9 +137,19 @@ function CardItem({
       {card.description && <p className="card-desc">{card.description}</p>}
       {(() => {
         const due = dueInfo(card.dueDate)
-        return due ? (
-          <span className={`card-due ${due.cls}`}>📅 {due.label}</span>
-        ) : null
+        const items = card.checklistItems ?? []
+        const doneCount = items.filter((i) => i.done).length
+        if (!due && items.length === 0) return null
+        return (
+          <div className="card-meta">
+            {due && <span className={`card-due ${due.cls}`}>📅 {due.label}</span>}
+            {items.length > 0 && (
+              <span className="card-check">
+                ☑ {doneCount}/{items.length}
+              </span>
+            )}
+          </div>
+        )
       })()}
     </article>
   )
@@ -144,6 +164,7 @@ function CardForm({
   onSubmit,
   onClose,
   onDone,
+  children,
 }: {
   initial: FormValues
   submitLabel: string
@@ -151,6 +172,8 @@ function CardForm({
   onSubmit: (input: NewCard) => Promise<unknown>
   onClose: () => void
   onDone: () => void
+  // フォーム項目の下（フッターの上）に差し込む追加要素（編集時のチェックリストなど）
+  children?: ReactNode
 }) {
   const [listId, setListId] = useState(initial.listId || LISTS[0]?.id || '')
   const [title, setTitle] = useState(initial.title)
@@ -257,6 +280,8 @@ function CardForm({
         />
 
         {error && <p className="add-error">⚠ {error}</p>}
+
+        {children}
       </div>
 
       <div className="modal-foot modal-foot-end">
@@ -272,6 +297,208 @@ function CardForm({
         </button>
       </div>
     </form>
+  )
+}
+
+// カードのチェックリスト（編集モードのモーダル内に表示）。
+// 追加・完了トグル・削除は即APIに反映し、ローカル状態と一覧（onChanged）を更新する。
+function CardChecklist({
+  card,
+  onChanged,
+}: {
+  card: Card
+  onChanged: () => void
+}) {
+  const [items, setItems] = useState<ChecklistItem[]>(card.checklistItems ?? [])
+  const [newContent, setNewContent] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const total = items.length
+  const done = items.filter((i) => i.done).length
+  const percent = total === 0 ? 0 : Math.round((done / total) * 100)
+
+  async function run(action: () => Promise<void>) {
+    if (busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      await action()
+      onChanged() // 一覧の ☑ x/y を更新
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : '操作に失敗しました')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // 入れ子フォームを避けるため form は使わず、ボタン／Enterキーから呼ぶ。
+  const submitAdd = () => {
+    const content = newContent.trim()
+    if (!content || busy) return
+    run(async () => {
+      const created = await addChecklistItem(card.id, content)
+      setItems((prev) => [...prev, created])
+      setNewContent('')
+    })
+  }
+
+  const handleToggle = (item: ChecklistItem) =>
+    run(async () => {
+      const updated = await updateChecklistItem(item.id, { done: !item.done })
+      setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))
+    })
+
+  const handleDelete = (item: ChecklistItem) =>
+    run(async () => {
+      await deleteChecklistItem(item.id)
+      setItems((prev) => prev.filter((i) => i.id !== item.id))
+    })
+
+  return (
+    <div className="checklist">
+      <div className="checklist-head">
+        <span className="field-label">チェックリスト</span>
+        {total > 0 && (
+          <span className="checklist-progress-text">
+            {done}/{total}
+          </span>
+        )}
+      </div>
+
+      {total > 0 && (
+        <div className="checklist-bar">
+          <div className="checklist-bar-fill" style={{ width: `${percent}%` }} />
+        </div>
+      )}
+
+      <ul className="checklist-items">
+        {items.map((item) => (
+          <li key={item.id} className="checklist-item">
+            <label className="checklist-label">
+              <input
+                type="checkbox"
+                checked={item.done}
+                disabled={busy}
+                onChange={() => handleToggle(item)}
+              />
+              <span className={item.done ? 'checklist-done' : ''}>
+                {item.content}
+              </span>
+            </label>
+            <button
+              type="button"
+              className="checklist-del"
+              aria-label="削除"
+              disabled={busy}
+              onClick={() => handleDelete(item)}
+            >
+              ×
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      <div className="checklist-add">
+        <input
+          type="text"
+          className="checklist-input"
+          placeholder="項目を追加..."
+          value={newContent}
+          disabled={busy}
+          onChange={(e) => setNewContent(e.target.value)}
+          onKeyDown={(e) => {
+            // Enter でカード編集フォームが送信されないようにして項目を追加する
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              submitAdd()
+            }
+          }}
+        />
+        <button
+          type="button"
+          className="btn btn-ghost checklist-add-btn"
+          disabled={busy || !newContent.trim()}
+          onClick={submitAdd}
+        >
+          ＋ 追加
+        </button>
+      </div>
+
+      {error && <p className="add-error">⚠ {error}</p>}
+    </div>
+  )
+}
+
+// 新規作成モーダル用のチェックリスト編集（カード未作成のためローカルに溜める）。
+// 入力内容は親(items/setItems)が保持し、カード作成成功後にまとめて登録される。
+function PendingChecklist({
+  items,
+  setItems,
+}: {
+  items: string[]
+  setItems: (updater: (prev: string[]) => string[]) => void
+}) {
+  const [newContent, setNewContent] = useState('')
+
+  const addItem = () => {
+    const content = newContent.trim()
+    if (!content) return
+    setItems((prev) => [...prev, content])
+    setNewContent('')
+  }
+
+  return (
+    <div className="checklist">
+      <div className="checklist-head">
+        <span className="field-label">チェックリスト</span>
+        {items.length > 0 && (
+          <span className="checklist-progress-text">{items.length}件</span>
+        )}
+      </div>
+
+      <ul className="checklist-items">
+        {items.map((content, idx) => (
+          <li key={idx} className="checklist-item">
+            <span className="checklist-label">{content}</span>
+            <button
+              type="button"
+              className="checklist-del"
+              aria-label="削除"
+              onClick={() => setItems((prev) => prev.filter((_, i) => i !== idx))}
+            >
+              ×
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      <div className="checklist-add">
+        <input
+          type="text"
+          className="checklist-input"
+          placeholder="項目を追加..."
+          value={newContent}
+          onChange={(e) => setNewContent(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              addItem()
+            }
+          }}
+        />
+        <button
+          type="button"
+          className="btn btn-ghost checklist-add-btn"
+          disabled={!newContent.trim()}
+          onClick={addItem}
+        >
+          ＋ 追加
+        </button>
+      </div>
+
+      <p className="checklist-note">※ カードを作成すると登録されます</p>
+    </div>
   )
 }
 
@@ -297,6 +524,9 @@ function CardModal({
   const isCreate = state.mode === 'create'
   const heading = isCreate ? 'カードを追加' : 'カード詳細'
 
+  // 新規作成モーダルでローカルに溜めるチェック項目（作成成功後に登録する）
+  const [pendingItems, setPendingItems] = useState<string[]>([])
+
   // モードに応じた初期値と送信処理。
   const initial: FormValues = isCreate
     ? { listId: state.listId, title: '', description: '', dueDate: '', priority: '' }
@@ -308,8 +538,15 @@ function CardModal({
         priority: state.card.priority ?? '',
       }
 
-  const handleSubmit = (input: NewCard) =>
-    isCreate ? createCard(input) : updateCard(state.card.id, input)
+  // 新規作成時はカード作成後、採番された id へ溜めた項目をまとめて登録する。
+  const handleSubmit = async (input: NewCard) => {
+    if (!isCreate) return updateCard(state.card.id, input)
+    const created = await createCard(input)
+    for (const content of pendingItems) {
+      await addChecklistItem(created.id, content)
+    }
+    return created
+  }
 
   return (
     // オーバーレイのクリックで閉じる。モーダル本体のクリックは伝播を止める。
@@ -335,7 +572,13 @@ function CardModal({
           onSubmit={handleSubmit}
           onClose={onClose}
           onDone={onSaved}
-        />
+        >
+          {state.mode === 'edit' ? (
+            <CardChecklist card={state.card} onChanged={onSaved} />
+          ) : (
+            <PendingChecklist items={pendingItems} setItems={setPendingItems} />
+          )}
+        </CardForm>
       </div>
     </div>
   )
