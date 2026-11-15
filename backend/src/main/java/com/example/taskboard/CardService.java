@@ -31,4 +31,30 @@ public class CardService {
         }
         return cardRepository.search(keyword.trim());
     }
+
+    /**
+     * カードを新規登録する。
+     *
+     * <p>登録先リストの存在を確認し、position はリスト内の末尾（MAX+1）に自動採番する。
+     * title の前後空白は取り除く。</p>
+     *
+     * @param request 登録内容（入力検証は Controller の {@code @Valid} で済んでいる前提）
+     * @return 登録後のカード（DB採番の id・position を含む）
+     * @throws NotFoundException 登録先リストが存在しない場合
+     */
+    public Card create(CardCreateRequest request) {
+        if (!cardRepository.listExists(request.listId())) {
+            throw new NotFoundException("指定されたリストが存在しません: " + request.listId());
+        }
+
+        int position = cardRepository.nextPosition(request.listId());
+
+        return cardRepository.insert(
+                request.listId(),
+                request.title().trim(),
+                request.description(),
+                request.dueDate(),
+                request.priority(),
+                position);
+    }
 }

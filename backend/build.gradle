@@ -20,6 +20,8 @@ repositories {
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+	// 入力検証（@Valid / @NotBlank など）を使うために追加
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	// Spring Boot 4 はオートコンフィグがモジュール分割されたため、
 	// Flyway は flyway-core 単体ではなく専用スターターが必要
 	implementation 'org.springframework.boot:spring-boot-starter-flyway'
