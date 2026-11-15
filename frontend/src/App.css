@@ -202,6 +202,21 @@
   margin-top: 8px;
   font-size: 12px;
   color: var(--text-sub);
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(9, 30, 66, 0.06);
+}
+
+/* 間近（今日〜3日以内） */
+.card-due.due-soon {
+  background: var(--due-soon-bg);
+  color: var(--due-soon);
+}
+
+/* 期限切れ（今日より前） */
+.card-due.due-over {
+  background: var(--due-over-bg);
+  color: var(--due-over);
 }
 
 /* 優先度バッジ */
