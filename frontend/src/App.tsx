@@ -85,6 +85,7 @@ function CardItem({
   card,
   onOpen,
   draggingId,
+  dragDisabled,
   onDragStart,
   onDragEnd,
   onDropBefore,
@@ -92,6 +93,8 @@ function CardItem({
   card: Card
   onOpen: (card: Card) => void
   draggingId: string | null
+  // true のときドラッグ不可（検索中など。絞り込み後の並びでは正しい移動先を決められないため）
+  dragDisabled: boolean
   onDragStart: (id: string) => void
   onDragEnd: () => void
   // このカードの直前に、ドラッグ中のカードをドロップする
@@ -103,8 +106,12 @@ function CardItem({
       className={`card${isDragging ? ' dragging' : ''}`}
       role="button"
       tabIndex={0}
-      draggable
+      draggable={!dragDisabled}
       onDragStart={(e) => {
+        if (dragDisabled) {
+          e.preventDefault()
+          return
+        }
         e.dataTransfer.effectAllowed = 'move'
         onDragStart(card.id)
       }}
@@ -830,7 +837,12 @@ function App() {
   }
 
   // targetListId 内の beforeCardId の直前へドロップしたときの移動先 index を求めて移動する。
+  // 検索中は絞り込み後の並びしか見えておらず、サーバ側の全体の並びと index がずれるため移動しない。
   function dropBefore(targetListId: string, beforeCardId: string) {
+    if (isSearching) {
+      setDraggingId(null)
+      return
+    }
     if (!draggingId || beforeCardId === draggingId) return
     const col = columns.find((c) => c.id === targetListId)
     if (!col) return
@@ -841,6 +853,10 @@ function App() {
 
   // リストの末尾（空白領域）へドロップしたときの移動。
   function dropToEnd(targetListId: string) {
+    if (isSearching) {
+      setDraggingId(null)
+      return
+    }
     if (!draggingId) return
     const col = columns.find((c) => c.id === targetListId)
     if (!col) return
@@ -850,7 +866,9 @@ function App() {
 
   // リストを key（期限/優先度）でソートし、結果を永続化する。
   // 押すたびに方向をトグル（期限は初回=昇順、優先度は初回=高い順）。
+  // 検索中は絞り込まれたカードしか無く、サーバは「リストの全カード」の並びを要求するため実行しない。
   async function sortList(listId: string, key: SortKey) {
+    if (isSearching) return
     const col = columns.find((c) => c.id === listId)
     if (!col || col.cards.length < 2) return
 
@@ -913,8 +931,12 @@ function App() {
                     <button
                       type="button"
                       className="sort-btn"
-                      title="期限順に並べ替え"
-                      disabled={col.cards.length < 2}
+                      title={
+                        isSearching
+                          ? '検索中は並べ替えできません'
+                          : '期限順に並べ替え'
+                      }
+                      disabled={isSearching || col.cards.length < 2}
                       onClick={() => sortList(col.id, 'due')}
                     >
                       📅
@@ -927,8 +949,12 @@ function App() {
                     <button
                       type="button"
                       className="sort-btn"
-                      title="優先度順に並べ替え"
-                      disabled={col.cards.length < 2}
+                      title={
+                        isSearching
+                          ? '検索中は並べ替えできません'
+                          : '優先度順に並べ替え'
+                      }
+                      disabled={isSearching || col.cards.length < 2}
                       onClick={() => sortList(col.id, 'priority')}
                     >
                       ⚑
@@ -958,6 +984,7 @@ function App() {
                       key={card.id}
                       onOpen={(c) => setModal({ mode: 'edit', card: c })}
                       draggingId={draggingId}
+                      dragDisabled={isSearching}
                       onDragStart={setDraggingId}
                       onDragEnd={() => setDraggingId(null)}
                       onDropBefore={(beforeId) => dropBefore(col.id, beforeId)}
