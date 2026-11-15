@@ -1,0 +1,170 @@
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===== ヘッダー（タイトル＋検索） ===== */
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 12px 24px;
+  background: var(--header-bg);
+  color: var(--header-text);
+}
+
+.app-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 6px;
+  padding: 6px 10px;
+  width: 320px;
+  max-width: 50vw;
+}
+
+.search-icon {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  color: var(--text);
+}
+
+/* ===== ボード本体 ===== */
+.board-main {
+  flex: 1;
+  padding: 20px 24px;
+  overflow-x: auto;
+}
+
+.lists {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.list {
+  background: var(--list-bg);
+  border-radius: 10px;
+  width: 280px;
+  flex: 0 0 auto;
+  padding: 10px;
+}
+
+.list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 6px 10px;
+}
+
+.list-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.list-count {
+  font-size: 12px;
+  color: var(--text-sub);
+  background: rgba(9, 30, 66, 0.08);
+  border-radius: 10px;
+  padding: 1px 8px;
+}
+
+.list-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ===== カード ===== */
+.card {
+  background: var(--card-bg);
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: var(--shadow);
+}
+
+.card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.card-desc {
+  font-size: 12px;
+  color: var(--text-sub);
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+
+.card-due {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+/* 優先度バッジ */
+.prio-badge {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  border-radius: 4px;
+  padding: 1px 7px;
+}
+
+.prio-high {
+  background: #e5493a;
+}
+.prio-mid {
+  background: #e79217;
+}
+.prio-low {
+  background: #4b9e4b;
+}
+
+/* ===== 状態メッセージ ===== */
+.state-msg {
+  font-size: 15px;
+  color: var(--text-sub);
+  padding: 8px 2px;
+}
+
+.state-error {
+  color: #c0392b;
+}
+
+.list-empty {
+  font-size: 12px;
+  color: var(--text-sub);
+  text-align: center;
+  padding: 8px 0;
+  margin: 0;
+}
