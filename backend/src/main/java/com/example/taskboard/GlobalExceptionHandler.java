@@ -38,6 +38,12 @@ public class GlobalExceptionHandler {
         return body(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
+    /** 業務的に不正なリクエスト（並べ替え対象の不一致など）→ 400 Bad Request。 */
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<Map<String, String>> handleBadRequest(BadRequestException ex) {
+        return body(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
     /** DB 制約違反（CHECK・FK など）→ 400 Bad Request。@Valid をすり抜けた不正入力の保険。 */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, String>> handleDataIntegrity(DataIntegrityViolationException ex) {

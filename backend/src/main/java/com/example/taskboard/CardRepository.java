@@ -114,6 +114,16 @@ public class CardRepository {
     }
 
     /**
+     * 指定リストのカードを position 昇順で取得する。
+     */
+    public List<Card> findByList(UUID listId) {
+        return jdbcTemplate.query(
+                "SELECT id, list_id, title, description, due_date, priority, position"
+                        + " FROM card WHERE list_id = ? ORDER BY position",
+                CARD_ROW_MAPPER, listId);
+    }
+
+    /**
      * 指定リストのカードIDを position 昇順で取得する。
      *
      * <p>並び替え・移動時に、リスト内の順序を組み替えるために使う。</p>
