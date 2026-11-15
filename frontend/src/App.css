@@ -53,6 +53,66 @@
   overflow-x: auto;
 }
 
+/* ===== カード登録フォーム ===== */
+.add-card {
+  background: var(--list-bg);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 16px;
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.add-card-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.add-field {
+  border: 1px solid rgba(9, 30, 66, 0.2);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--card-bg);
+  outline: none;
+}
+
+.add-title {
+  flex: 1;
+  min-width: 180px;
+}
+
+.add-desc {
+  flex: 1;
+  min-width: 180px;
+}
+
+.add-submit {
+  border: none;
+  border-radius: 6px;
+  padding: 7px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  background: #4b9e4b;
+  cursor: pointer;
+}
+
+.add-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.add-error {
+  margin: 0;
+  font-size: 13px;
+  color: #c0392b;
+}
+
 .lists {
   display: flex;
   align-items: flex-start;
