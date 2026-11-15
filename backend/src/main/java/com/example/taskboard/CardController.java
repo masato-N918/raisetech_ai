@@ -73,4 +73,21 @@ public class CardController {
             @Valid @RequestBody CardUpdateRequest request) {
         return cardService.update(id, request);
     }
+
+    /**
+     * カードを移動・並び替えする。
+     *
+     * <p>{@code PUT /api/cards/{id}/position} … パスのカードを、ボディで指定した
+     * リスト（{@code listId}）の指定位置（{@code position}）へ移動し、リスト内の
+     * 並び順を詰め直す。更新後のカードを {@code 200 OK} で返す。対象カードや移動先
+     * リストが無ければ {@code 404}、入力不正は {@code 400}。</p>
+     *
+     * @param id      移動対象のカードID（パス変数）
+     * @param request 移動先リストと位置
+     */
+    @PutMapping("/api/cards/{id}/position")
+    public Card moveCard(@PathVariable UUID id,
+            @Valid @RequestBody CardMoveRequest request) {
+        return cardService.move(id, request.listId(), request.position());
+    }
 }

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * カードに関する業務ロジックを担当するサービス層。
@@ -91,5 +92,50 @@ public class CardService {
                 request.dueDate(),
                 request.priority(),
                 position);
+    }
+
+    /**
+     * カードを移動・並び替えする。
+     *
+     * <p>移動先リストの並びに、指定の index でカードを挿入し直し、リスト内の position を
+     * 0..n に詰め直す。別リストへ移動した場合は移動元リストの position も詰め直す。
+     * 整合性を保つため1トランザクションで実施する。</p>
+     *
+     * @param id          移動するカードID
+     * @param targetListId 移動先リストID
+     * @param targetIndex  移動先リスト内での並び順（0 始まり。範囲外はリスト端に丸める）
+     * @return 移動後のカード
+     * @throws NotFoundException 対象カード、または移動先リストが存在しない場合
+     */
+    @Transactional
+    public Card move(UUID id, UUID targetListId, int targetIndex) {
+        Card card = cardRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("指定されたカードが存在しません: " + id));
+
+        if (!cardRepository.listExists(targetListId)) {
+            throw new NotFoundException("指定されたリストが存在しません: " + targetListId);
+        }
+
+        UUID sourceListId = card.listId();
+
+        // 移動先リストの並び（移動カードを除く）に、指定位置で挿入し直して 0..n を振り直す。
+        List<UUID> target = cardRepository.findIdsByList(targetListId);
+        target.remove(id);
+        int idx = Math.max(0, Math.min(targetIndex, target.size()));
+        target.add(idx, id);
+        for (int i = 0; i < target.size(); i++) {
+            cardRepository.setListAndPosition(target.get(i), targetListId, i);
+        }
+
+        // 別リストへ移動した場合は、移動元リストの position も詰め直す。
+        if (!sourceListId.equals(targetListId)) {
+            List<UUID> source = cardRepository.findIdsByList(sourceListId);
+            for (int i = 0; i < source.size(); i++) {
+                cardRepository.setListAndPosition(source.get(i), sourceListId, i);
+            }
+        }
+
+        return cardRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("指定されたカードが存在しません: " + id));
     }
 }
