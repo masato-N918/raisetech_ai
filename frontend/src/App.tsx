@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
-import { createCard, fetchCards } from './api'
+import { createCard, fetchCards, updateCard } from './api'
 import { LISTS, listTitle } from './lists'
 import type { Card, NewCard, Priority } from './types'
 
@@ -12,11 +12,20 @@ const PRIORITY_CLASS: Record<Priority, string> = {
 
 const PRIORITIES: Priority[] = ['高', '中', '低']
 
-// モーダルの状態。既存カードの詳細表示(view)か、新規追加(create)か。
+// モーダルの状態。既存カードの編集(edit)か、新規追加(create)か。
 // create のときは「＋ カード追加」を押したリストの id を初期選択に使う。
 type ModalState =
-  | { mode: 'view'; card: Card }
+  | { mode: 'edit'; card: Card }
   | { mode: 'create'; listId: string }
+
+// フォームの入力値（文字列ベース。送信時に NewCard へ整形する）。
+interface FormValues {
+  listId: string
+  title: string
+  description: string
+  dueDate: string
+  priority: Priority | ''
+}
 
 function CardItem({
   card,
@@ -52,44 +61,28 @@ function CardItem({
   )
 }
 
-// 既存カードの詳細表示（読み取り専用）。
-function CardView({ card }: { card: Card }) {
-  const hasDesc = !!card.description?.trim()
-  return (
-    <div className="modal-body">
-      <span className="field-label">タイトル</span>
-      <p className="field-value">{card.title}</p>
-
-      <span className="field-label">リスト（状態）</span>
-      <p className="field-value">{listTitle(card.listId)}</p>
-
-      <span className="field-label">優先度</span>
-      <p className="field-value">{card.priority ?? 'なし'}</p>
-
-      <span className="field-label">説明</span>
-      <p className="field-value field-desc">{hasDesc ? card.description : '—'}</p>
-
-      <span className="field-label">期限</span>
-      <p className="field-value">{card.dueDate ?? '—'}</p>
-    </div>
-  )
-}
-
-// 新規カードの入力フォーム。登録成功で onCreated（一覧再取得）→ onClose。
-function CardCreateForm({
-  initialListId,
+// カードの入力フォーム（新規追加・編集で共通）。
+// onSubmit に整形済みの NewCard を渡す。成功で onDone（一覧再取得）→ onClose。
+function CardForm({
+  initial,
+  submitLabel,
+  pendingLabel,
+  onSubmit,
   onClose,
-  onCreated,
+  onDone,
 }: {
-  initialListId: string
+  initial: FormValues
+  submitLabel: string
+  pendingLabel: string
+  onSubmit: (input: NewCard) => Promise<unknown>
   onClose: () => void
-  onCreated: () => void
+  onDone: () => void
 }) {
-  const [listId, setListId] = useState(initialListId || LISTS[0]?.id || '')
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [dueDate, setDueDate] = useState('')
-  const [priority, setPriority] = useState<Priority | ''>('')
+  const [listId, setListId] = useState(initial.listId || LISTS[0]?.id || '')
+  const [title, setTitle] = useState(initial.title)
+  const [description, setDescription] = useState(initial.description)
+  const [dueDate, setDueDate] = useState(initial.dueDate)
+  const [priority, setPriority] = useState<Priority | ''>(initial.priority)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -108,11 +101,11 @@ function CardCreateForm({
     setSubmitting(true)
     setError(null)
     try {
-      await createCard(input)
-      onCreated()
+      await onSubmit(input)
+      onDone()
       onClose()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : '登録に失敗しました')
+      setError(err instanceof Error ? err.message : '保存に失敗しました')
       setSubmitting(false)
     }
   }
@@ -201,22 +194,22 @@ function CardCreateForm({
           className="btn btn-primary"
           disabled={!title.trim() || submitting}
         >
-          {submitting ? '追加中...' : '追加'}
+          {submitting ? pendingLabel : submitLabel}
         </button>
       </div>
     </form>
   )
 }
 
-// カード詳細モーダル。view（詳細表示）/ create（新規追加）の2モードを持つ。
+// カード詳細モーダル。edit（既存カードの編集）/ create（新規追加）の2モード。
 function CardModal({
   state,
   onClose,
-  onCreated,
+  onSaved,
 }: {
   state: ModalState
   onClose: () => void
-  onCreated: () => void
+  onSaved: () => void
 }) {
   // Escキーで閉じる
   useEffect(() => {
@@ -229,6 +222,20 @@ function CardModal({
 
   const isCreate = state.mode === 'create'
   const heading = isCreate ? 'カードを追加' : 'カード詳細'
+
+  // モードに応じた初期値と送信処理。
+  const initial: FormValues = isCreate
+    ? { listId: state.listId, title: '', description: '', dueDate: '', priority: '' }
+    : {
+        listId: state.card.listId,
+        title: state.card.title,
+        description: state.card.description ?? '',
+        dueDate: state.card.dueDate ?? '',
+        priority: state.card.priority ?? '',
+      }
+
+  const handleSubmit = (input: NewCard) =>
+    isCreate ? createCard(input) : updateCard(state.card.id, input)
 
   return (
     // オーバーレイのクリックで閉じる。モーダル本体のクリックは伝播を止める。
@@ -247,15 +254,14 @@ function CardModal({
           </button>
         </div>
 
-        {state.mode === 'create' ? (
-          <CardCreateForm
-            initialListId={state.listId}
-            onClose={onClose}
-            onCreated={onCreated}
-          />
-        ) : (
-          <CardView card={state.card} />
-        )}
+        <CardForm
+          initial={initial}
+          submitLabel={isCreate ? '追加' : '保存'}
+          pendingLabel={isCreate ? '追加中...' : '保存中...'}
+          onSubmit={handleSubmit}
+          onClose={onClose}
+          onDone={onSaved}
+        />
       </div>
     </div>
   )
@@ -266,7 +272,7 @@ function App() {
   const [cards, setCards] = useState<Card[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  // 登録後にインクリメントして一覧を再取得させるためのキー
+  // 登録・更新後にインクリメントして一覧を再取得させるためのキー
   const [reloadKey, setReloadKey] = useState(0)
   // 開いているモーダル（null なら閉じている）
   const [modal, setModal] = useState<ModalState | null>(null)
@@ -355,7 +361,7 @@ function App() {
                     <CardItem
                       card={card}
                       key={card.id}
-                      onOpen={(c) => setModal({ mode: 'view', card: c })}
+                      onOpen={(c) => setModal({ mode: 'edit', card: c })}
                     />
                   ))}
                   {col.cards.length === 0 && (
@@ -384,7 +390,7 @@ function App() {
         <CardModal
           state={modal}
           onClose={() => setModal(null)}
-          onCreated={reload}
+          onSaved={reload}
         />
       )}
     </div>
