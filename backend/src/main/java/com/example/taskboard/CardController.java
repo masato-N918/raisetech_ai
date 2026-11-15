@@ -1,11 +1,14 @@
 package com.example.taskboard;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -53,5 +56,21 @@ public class CardController {
     public ResponseEntity<Card> createCard(@Valid @RequestBody CardCreateRequest request) {
         Card created = cardService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    /**
+     * カードを更新する。
+     *
+     * <p>{@code PUT /api/cards/{id}} … パスのカードを、リクエストボディ（JSON）の内容で
+     * 更新し、更新後のカードを {@code 200 OK} で返す。対象カードや移動先リストが無ければ
+     * {@code 404}、入力不正は {@code 400}（{@link GlobalExceptionHandler} に準拠）。</p>
+     *
+     * @param id      更新対象のカードID（パス変数）
+     * @param request 更新するカードの内容（入力検証は {@code @Valid} で実施）
+     */
+    @PutMapping("/api/cards/{id}")
+    public Card updateCard(@PathVariable UUID id,
+            @Valid @RequestBody CardUpdateRequest request) {
+        return cardService.update(id, request);
     }
 }
