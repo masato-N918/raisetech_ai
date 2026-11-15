@@ -83,3 +83,27 @@ export async function moveCard(
   }
   return (await res.json()) as Card
 }
+
+// リスト内カードの並び順をまとめて更新する（PUT /api/lists/{listId}/card-order）。
+// cardIds はそのリストのカードIDを希望順に並べた配列。並べ替え後のカードが返る。
+export async function reorderCards(
+  listId: string,
+  cardIds: string[],
+): Promise<Card[]> {
+  const res = await fetch(`/api/lists/${listId}/card-order`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cardIds }),
+  })
+  if (!res.ok) {
+    let detail = ''
+    try {
+      const body = (await res.json()) as { message?: string }
+      if (body?.message) detail = `: ${body.message}`
+    } catch {
+      // JSON でなければ無視
+    }
+    throw new Error(`カードの並べ替えに失敗しました (HTTP ${res.status})${detail}`)
+  }
+  return (await res.json()) as Card[]
+}
