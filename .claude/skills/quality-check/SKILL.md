@@ -1,6 +1,6 @@
 ---
 name: quality-check
-description: raisetech_ai（Trello風タスク管理アプリ：Spring Boot + React）の品質チェックを行う。lint・型チェック・ビルド・依存の脆弱性チェックを実行し、要件定義書などの docs/ と実装の食い違い、バグ、デファクトスタンダードやベストプラクティスからのずれを洗い出して、優先度つきで報告する。「品質チェックして」「レビューして」「lint かけて」「よくない点を指摘して」「ベストプラクティスから外れていないか見て」「ドキュメントと実装がずれていないか確認して」など、コードの品質・正しさ・規約への適合を確かめたい依頼では、対象範囲や言い方が違っても必ずこのスキルを使うこと。
+description: raisetech_ai（Trello風タスク管理アプリ：Spring Boot + React、AWS へのデプロイは Terraform + PowerShell スクリプト）の品質チェックを行う。lint・型チェック・ビルド・依存の脆弱性チェック、Terraform の fmt / validate を実行し、要件定義書などの docs/ と実装の食い違い、バグ、デファクトスタンダードやベストプラクティスからのずれを洗い出して、優先度つきで報告する。「品質チェックして」「レビューして」「lint かけて」「よくない点を指摘して」「ベストプラクティスから外れていないか見て」「ドキュメントと実装がずれていないか確認して」など、コードの品質・正しさ・規約への適合を確かめたい依頼では、対象範囲や言い方が違っても必ずこのスキルを使うこと。
 ---
 
 # 品質チェック（raisetech_ai）
@@ -63,6 +63,23 @@ npx oxlint --jsx-a11y-plugin -W suspicious -W perf src 2>/dev/null \
 
 Java 用の静的解析ツール（Checkstyle / Spotless / SpotBugs など）が `build.gradle` に入っているか確認し、入っていれば実行する。入っていなければ「未導入」として報告に含める。
 
+**インフラ・デプロイ**（`terraform/`、`scripts/`）
+
+| チェック | コマンド | 備考 |
+|---|---|---|
+| Terraform の書式 | `terraform -chdir=terraform fmt -check -recursive` | 差分があるファイル名が出る。Windows には `diff` がないので `-diff` は付けない |
+| Terraform の構文・参照 | `terraform -chdir=terraform validate` | 未初期化なら先に `terraform -chdir=terraform init -backend=false`（AWS には接続しない） |
+| Terraform の lint | `tflint --chdir=terraform` | 未インストールなら「未導入」と報告する |
+| Terraform のセキュリティ | `trivy config terraform` または `checkov -d terraform` | 未インストールなら「未導入」と報告し、手順 3 の観点（[checklist.md](references/checklist.md) の 6 章）で目視する |
+| PowerShell の構文 | `[Management.Automation.Language.Parser]::ParseFile(<パス>, [ref]$null, [ref]$errs)` で `$errs` が 0 件か | `scripts/*.ps1` ごとに実行する |
+| PowerShell の文字コード | 先頭 3 バイトが `EF BB BF`（UTF-8 BOM）か | Windows PowerShell 5.1 は BOM なしの UTF-8 を Shift_JIS として読み、日本語が化けたり構文エラーになったりする |
+| PowerShell の lint | `Invoke-ScriptAnalyzer -Path scripts -Recurse` | PSScriptAnalyzer が未インストールなら「未導入」と報告する |
+| シェルスクリプトの lint | `shellcheck`（`user_data.sh.tftpl` は Terraform のテンプレートなので、`$${` → `${` に置き換えてから渡す） | 未インストールなら「未導入」と報告し、目視する |
+| 改行コード | `git ls-files --eol terraform scripts` | EC2 で実行する `*.tftpl` / `*.sh` が `i/lf` であること（CRLF だと bash が失敗する） |
+| 秘密情報の混入 | `git ls-files` に `*.tfstate`・`*.tfvars`（`.example` 以外）・`.env` が含まれていないか。差分に IP アドレス・AWS アカウント ID・アクセスキー（`AKIA`）・秘密鍵が含まれていないか | 例示用の `203.0.113.0/24`、VPC 内の `10.x.x.x`、`0.0.0.0/0` は問題ない |
+
+**`terraform plan` / `apply` は実行しない。** plan は AWS に接続し、apply は課金が発生する。必要なら報告の中で「plan での確認を推奨」と書くにとどめる。
+
 **リポジトリ全体**
 
 - CI（`.github/workflows/`）があるか、`.editorconfig` があるか
@@ -80,6 +97,9 @@ Java 用の静的解析ツール（Checkstyle / Spotless / SpotBugs など）が
 | `docs/非機能要件.md`（性能・誤操作防止・保守性など） | 部分更新になっているか、確認ダイアログがあるか、構成が読みやすいか |
 | `README.md` の API 一覧・起動手順・機能一覧 | Controller の `@*Mapping`、実際の起動方法 |
 | `docs/要件定義書.md` の技術スタック・改訂履歴 | `build.gradle`、`package.json`、`gradle-wrapper.properties` |
+| `docs/インフラ設計書.md` の構成図・リソース一覧・セキュリティ・手順 | `terraform/*.tf`、`user_data.sh.tftpl`、`scripts/deploy.ps1`。図にあるリソースや通信が実在するか、逆に tf にあるのに文書にないものはないか。手順のコマンドがそのまま動くか |
+| `docs/非機能要件.md` のアクセス制限・秘密情報・バックアップ | セキュリティグループのルール、RDS の `publicly_accessible` / `backup_retention_period`、SSM パラメータの型 |
+| `README.md` のデプロイ手順・ディレクトリ構成 | `terraform/`・`scripts/` の実際のファイル、`terraform.tfvars.example` |
 
 食い違いを見つけたら、「どちらが正しいか」も判断して書く（多くは実装が進んでドキュメントが古いだけ。逆に、ドキュメントの仕様どおりに実装されていない場合はバグとして扱う）。
 
@@ -93,6 +113,7 @@ Java 用の静的解析ツール（Checkstyle / Spotless / SpotBugs など）が
 - **エラー処理**：エラーがユーザーに見えるか、すぐ消えないか、レスポンスの形式がそろっているか
 - **デファクトスタンダードからのずれ**：Spring Boot / React / TypeScript / PostgreSQL で一般的なやり方と比べてどうか。ずれていても学習目的の方針（例：JPA ではなく JdbcTemplate を使う、と要件定義書に明記）なら指摘しない
 - **テスト・CI・静的解析の有無**
+- **インフラとデプロイ**：通信の許可が最小限か、秘密情報がどこに残るか、作り直し・再実行しても同じ結果になるか（冪等性）、Windows（PowerShell 5.1・OpenSSH）と Linux（EC2）の違いで壊れないか。学習用途として要件定義書・非機能要件で許容している制約（HTTP のみ、シングル AZ、バックアップなし、削除保護なし）は指摘しない
 
 ## 報告の形式
 
@@ -112,7 +133,7 @@ Java 用の静的解析ツール（Checkstyle / Spotless / SpotBugs など）が
 - （どのドキュメントのどこが、実装とどう違うか。どちらに合わせるべきか）
 
 ## C. ベストプラクティスとのずれ（優先度：中〜低）
-（バックエンド／フロントエンド／リポジトリ全体に分けて、なぜそれが一般的なのかを 1 文で添える）
+（バックエンド／フロントエンド／インフラ・デプロイ／リポジトリ全体に分けて、なぜそれが一般的なのかを 1 文で添える）
 
 ## 修正の進め方（提案）
 （1 Issue ＝ 1 PR の単位で、おすすめの順番に並べる。ブランチの種別（fix/ docs/ chore/ refactor/）も添える）
