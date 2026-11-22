@@ -22,3 +22,13 @@ output "ssh_command" {
   description = "SSH で接続するコマンド"
   value       = "ssh ec2-user@${aws_instance.app.public_ip}"
 }
+
+output "db_endpoint" {
+  description = "RDS の接続先（VPC の中、つまり EC2 からしか接続できない）"
+  value       = aws_db_instance.main.address
+}
+
+output "db_parameter_path" {
+  description = "DB の接続情報を置いた SSM パラメータストアのパス"
+  value       = "/${var.project_name}/db/"
+}

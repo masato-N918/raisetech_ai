@@ -46,6 +46,36 @@ variable "public_subnet_cidr" {
   default     = "10.0.1.0/24"
 }
 
+variable "private_subnet_cidrs" {
+  description = "RDS を置くプライベートサブネットの IP アドレス範囲（RDS は 2 つ以上の AZ が必要なので 2 つ）"
+  type        = list(string)
+  default     = ["10.0.11.0/24", "10.0.12.0/24"]
+}
+
+variable "db_engine_version" {
+  description = "RDS の PostgreSQL のバージョン（メジャーだけ指定すると、その系列の既定のマイナーバージョンになる）"
+  type        = string
+  default     = "18"
+}
+
+variable "db_instance_class" {
+  description = "RDS のインスタンスクラス"
+  type        = string
+  default     = "db.t4g.micro"
+}
+
+variable "db_name" {
+  description = "RDS に作るデータベース名"
+  type        = string
+  default     = "taskboard"
+}
+
+variable "db_username" {
+  description = "RDS のマスターユーザー名"
+  type        = string
+  default     = "taskboard"
+}
+
 variable "repo_url" {
   description = "EC2 上で clone してビルドするリポジトリ（公開リポジトリなので認証不要）"
   type        = string

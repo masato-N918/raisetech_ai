@@ -33,6 +33,10 @@ dnf install -y \
 # Node.js は node-22 のように名前空間付きで入るので、node / npm コマンドを 22 に向ける
 alternatives --set node /usr/bin/node-22
 
+# PostgreSQL クライアント（psql）: EC2 から RDS への接続確認用。
+# RDS と同じ 18 を入れる。リポジトリに無かった場合は 17 で代用する（psql は新しいサーバーにも接続できる）
+dnf install -y postgresql18 || dnf install -y postgresql17
+
 # --- nginx --------------------------------------------------------------------
 # 既定のサーバー設定（/usr/share/nginx/html を配信）に、/api/ を Spring Boot へ中継する設定を足す。
 # 既定の server ブロックは /etc/nginx/default.d/*.conf を読み込む。
@@ -61,6 +65,7 @@ java -version
 node --version
 npm --version
 nginx -v
+psql --version
 free -h
 
 echo "user_data setup completed"

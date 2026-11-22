@@ -12,8 +12,8 @@ resource "aws_key_pair" "deploy" {
 }
 
 # --- IAM ロール --------------------------------------------------------------
-# Session Manager で接続できるようにする（SSH を閉じた後の入口になる）。
-# RDS のステップで、DB パスワードを SSM パラメータストアから読む権限を追加する。
+# - Session Manager で接続できるようにする（SSH を閉じた後の入口になる）
+# - DB の接続情報を SSM パラメータストア（/<project_name>/db/*）から読めるようにする
 
 data "aws_iam_policy_document" "ec2_assume_role" {
   statement {
@@ -33,6 +33,30 @@ resource "aws_iam_role" "ec2" {
 resource "aws_iam_role_policy_attachment" "ec2_ssm_core" {
   role       = aws_iam_role.ec2.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+data "aws_caller_identity" "current" {}
+
+# DB の接続情報だけを読める最小限の権限
+# （SecureString は AWS 管理キー aws/ssm で暗号化しているので、KMS の権限を別に付けなくても復号できる）
+data "aws_iam_policy_document" "ec2_read_db_parameters" {
+  statement {
+    actions = [
+      "ssm:GetParameter",
+      "ssm:GetParameters",
+      "ssm:GetParametersByPath",
+    ]
+    resources = [
+      "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/db",
+      "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/${var.project_name}/db/*",
+    ]
+  }
+}
+
+resource "aws_iam_role_policy" "ec2_read_db_parameters" {
+  name   = "read-db-parameters"
+  role   = aws_iam_role.ec2.id
+  policy = data.aws_iam_policy_document.ec2_read_db_parameters.json
 }
 
 resource "aws_iam_instance_profile" "ec2" {
