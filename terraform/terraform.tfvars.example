@@ -1,0 +1,10 @@
+# このファイルを terraform.tfvars という名前でコピーして、値を書き換えて使う。
+# terraform.tfvars は .gitignore で除外しているので Git には入らない。
+
+# 自分のグローバル IP（末尾に /32 を付ける）
+# 調べ方: PowerShell で (Invoke-RestMethod https://checkip.amazonaws.com).Trim()
+my_ip_cidr = "203.0.113.10/32"
+
+# 以下は既定値のままでよければ書かなくてよい
+# ssh_public_key_path = "~/.ssh/id_rsa.pub"
+# instance_type       = "t3.micro"

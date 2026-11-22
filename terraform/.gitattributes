@@ -1,0 +1,4 @@
+# EC2（Linux）で実行するスクリプトは、Windows でチェックアウトしても改行を LF に固定する
+# （CRLF のままだと bash が "\r: command not found" で失敗する）
+*.tftpl text eol=lf
+*.sh    text eol=lf
