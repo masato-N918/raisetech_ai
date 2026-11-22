@@ -75,9 +75,3 @@ variable "db_username" {
   type        = string
   default     = "taskboard"
 }
-
-variable "repo_url" {
-  description = "EC2 上で clone してビルドするリポジトリ（公開リポジトリなので認証不要）"
-  type        = string
-  default     = "https://github.com/masato-N918/raisetech_ai.git"
-}

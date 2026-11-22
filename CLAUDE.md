@@ -68,6 +68,8 @@ gh pr merge --delete-branch
 - バックエンド: Java 25 + Spring Boot 4
 - フロントエンド: React
 - データベース: PostgreSQL（Docker Compose、Flywayでスキーマ管理）
+- 本番環境: AWS（EC2 1台 + RDS for PostgreSQL）。インフラは `terraform/` の Terraform で管理し、デプロイは `scripts/deploy.ps1`（ローカルでビルド → scp）。構成は `docs/インフラ設計書.md` を参照
+  - `terraform apply` は課金が発生するため、ユーザーの指示があるときだけ実行し、作業後は `terraform destroy` で削除する
 
 ## 補足
 

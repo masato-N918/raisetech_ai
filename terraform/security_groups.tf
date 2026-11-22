@@ -30,7 +30,7 @@ resource "aws_vpc_security_group_ingress_rule" "ec2_ssh" {
   to_port           = 22
 }
 
-# 外向き: すべて許可（dnf でのインストール、git clone、Maven / npm からの取得、RDS への接続に必要）
+# 外向き: すべて許可（dnf でのインストール、SSM への接続、RDS への接続に必要）
 resource "aws_vpc_security_group_egress_rule" "ec2_all" {
   security_group_id = aws_security_group.ec2.id
   description       = "All outbound"

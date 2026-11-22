@@ -18,6 +18,8 @@
 | フロントエンド | React 19 + TypeScript 7 + Vite 8 |
 | HTTP クライアント | fetch API（ブラウザ標準） |
 | Lint / テスト | oxlint（FE） / JUnit 5（BE） |
+| 本番環境 | AWS（EC2 + RDS for PostgreSQL）、nginx |
+| インフラ構築 | Terraform + AWS CLI |
 
 > フロント（React）とバックエンド（Spring Boot）は分離構成とし、REST API（JSON）で連携します。
 > フロントは `/api` へのリクエストを Vite の開発プロキシでバックエンド（:8080）へ転送します。
@@ -32,6 +34,8 @@ raisetech_ai/
 │   └── docker-compose.yml                     # PostgreSQL
 ├── frontend/     # React + TypeScript（Vite）
 │   └── src/                                   # 画面・API 呼び出し
+├── terraform/    # AWS のインフラ定義（VPC・EC2・RDS など）
+├── scripts/      # デプロイスクリプト（deploy.ps1）
 ├── docs/         # 要件定義・設計ドキュメント
 └── CLAUDE.md     # 開発ワークフロー（ブランチ運用ルール）
 ```
@@ -60,6 +64,23 @@ npm run dev
 ブラウザで http://localhost:5173 を開くと、カードが ToDo / Doing / Done のリストごとにボード表示されます。
 
 > バックエンドを先に起動しておく必要があります（フロントは `/api` を :8080 へプロキシするため）。
+
+## AWS へのデプロイ
+
+EC2 1台（nginx + Spring Boot）と RDS for PostgreSQL の構成です。Terraform で構築し、手元でビルドした成果物をスクリプトで EC2 に送ります。
+アクセスできるのは、`terraform.tfvars` で指定した本人の IP からだけです。
+
+```powershell
+cd terraform
+copy terraform.tfvars.example terraform.tfvars   # 初回のみ。本人の IP と公開鍵のパスを書く
+terraform init                                   # 初回のみ
+terraform apply                                  # 構築（約 6 分）
+cd ..
+.\scripts\deploy.ps1                             # ビルド → 転送 → 再起動（約 1 分）
+```
+
+使い終わったら `terraform destroy` で削除します（DB のデータも消えます）。
+構成図や運用の詳細は [インフラ設計書](docs/インフラ設計書.md) を参照してください。
 
 ## 機能（現時点）
 
@@ -97,6 +118,7 @@ npm run dev
 | [画面設計書](docs/画面設計書.md) | 画面一覧、画面遷移、ワイヤーフレーム |
 | [データ設計書](docs/データ設計書.md) | データ項目、ER図、テーブル定義 |
 | [非機能要件](docs/非機能要件.md) | 性能・可用性・セキュリティ等 |
+| [インフラ設計書](docs/インフラ設計書.md) | AWS の構成図、セキュリティ、構築・デプロイ・運用の手順 |
 
 ## 開発ワークフロー
 

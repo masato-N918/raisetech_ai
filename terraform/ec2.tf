@@ -90,8 +90,10 @@ resource "aws_instance" "app" {
   }
 
   # 初回起動時に実行するセットアップスクリプト
+  # （DB 接続情報を読む SSM のパスとリージョンを埋め込む）
   user_data = templatefile("${path.module}/user_data.sh.tftpl", {
-    repo_url = var.repo_url
+    project_name = var.project_name
+    aws_region   = var.aws_region
   })
 
   # user_data を変えたらインスタンスを作り直して、スクリプトを最初から実行し直す
@@ -100,7 +102,7 @@ resource "aws_instance" "app" {
 
   tags = { Name = "${var.project_name}-app" }
 
-  # user_data は起動直後に dnf / git でインターネットを使うので、
+  # user_data は起動直後に dnf でインターネットを使うので、
   # インターネットへの経路（ルートテーブルの関連付け）ができてから起動する
   depends_on = [aws_route_table_association.public_a]
 
