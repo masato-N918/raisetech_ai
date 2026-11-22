@@ -1,0 +1,116 @@
+#!/bin/bash
+# EC2 の初回起動時に root で 1 回だけ実行されるセットアップスクリプト。
+# 実行ログは /var/log/cloud-init-output.log で確認できる。
+#
+# ビルドは手元の PC で行い、成果物（JAR と dist/）を scp で送ってくる方式なので、
+# EC2 には「実行に必要なもの」だけを入れる。
+#
+# ※ Terraform の templatefile で読み込むため、波かっこ付きの「$」+「{名前}」は Terraform の変数展開になる
+#    （例：下の load-env.sh の project_name / aws_region は Terraform が値を埋め込む）。
+#    シェルの変数は、波かっこなしの $VAR で書く。波かっこがどうしても必要なとき（$${name##*/} など）は、
+#    先頭の「$」を 2 つ重ねて書くと、Terraform は展開せずに「$」1 つにして残す。
+set -euxo pipefail
+
+APP_DIR=/opt/taskboard
+
+# --- タイムゾーン -------------------------------------------------------------
+timedatectl set-timezone Asia/Tokyo
+
+# --- スワップ 1GB（t3.micro はメモリ 1GB なので、Spring Boot 実行時の保険として確保）
+if [ ! -f /swapfile ]; then
+  dd if=/dev/zero of=/swapfile bs=1M count=1024
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+  echo '/swapfile none swap defaults 0 0' >> /etc/fstab
+fi
+
+# --- パッケージ ---------------------------------------------------------------
+# Java 25: バックエンドの実行だけなので、画面描画まわりを省いた headless 版
+#          （パッケージが無かった場合は通常版で代用する）
+# nginx: 画面の配信と API への中継
+dnf install -y java-25-amazon-corretto-headless || dnf install -y java-25-amazon-corretto
+dnf install -y nginx
+
+# PostgreSQL クライアント（psql）: EC2 から RDS への接続確認用。
+# RDS と同じ 18 を入れる。リポジトリに無かった場合は 17 で代用する（psql は新しいサーバーにも接続できる）
+dnf install -y postgresql18 || dnf install -y postgresql17
+
+# --- nginx --------------------------------------------------------------------
+# 既定のサーバー設定（/usr/share/nginx/html を配信）に、/api/ を Spring Boot へ中継する設定を足す。
+# 既定の server ブロックは /etc/nginx/default.d/*.conf を読み込む。
+cat > /etc/nginx/default.d/taskboard.conf <<'NGINX'
+location /api/ {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+NGINX
+
+# デプロイ時に ec2-user が scp でフロントのビルド成果物（dist/ の中身）を置けるようにする
+chown -R ec2-user:ec2-user /usr/share/nginx/html
+
+systemctl enable --now nginx
+
+# --- バックエンドの配置先 -----------------------------------------------------
+# デプロイ時に ec2-user が scp で JAR を置く（$APP_DIR/app.jar）
+mkdir -p "$APP_DIR"
+chown ec2-user:ec2-user "$APP_DIR"
+
+# --- DB 接続情報の読み込みスクリプト ------------------------------------------
+# SSM パラメータストアの /<project>/db/ 以下を読み、アプリが読む .env（KEY=値 の形）を作る。
+# アプリの application.properties は作業ディレクトリの .env を取り込む設定になっているので、
+# アプリのコードや設定は変えずに済む。起動のたびに読み直すので、パスワードを変えても再起動だけでよい。
+cat > "$APP_DIR/load-env.sh" <<'LOADENV'
+#!/bin/bash
+set -euo pipefail
+umask 077   # .env はパスワードを含むので、本人（ec2-user）しか読めないようにする
+cd /opt/taskboard
+aws ssm get-parameters-by-path \
+  --path "/${project_name}/db/" --with-decryption --region "${aws_region}" \
+  --query 'Parameters[].[Name,Value]' --output text \
+  | while IFS=$'\t' read -r name value; do echo "$${name##*/}=$value"; done > .env.tmp
+# 5 つそろっていなければ失敗にする（中途半端な .env で起動しないように）
+[ "$(wc -l < .env.tmp)" -eq 5 ] || { echo "SSM から DB の接続情報を取得できませんでした" >&2; exit 1; }
+mv .env.tmp .env
+LOADENV
+chmod 755 "$APP_DIR/load-env.sh"
+chown ec2-user:ec2-user "$APP_DIR/load-env.sh"
+
+# --- Spring Boot の常駐設定（systemd）-----------------------------------------
+cat > /etc/systemd/system/taskboard.service <<'UNIT'
+[Unit]
+Description=Taskboard Spring Boot application
+After=network-online.target
+Wants=network-online.target
+# まだ一度もデプロイしていない（JAR がない）ときは起動しない
+ConditionPathExists=/opt/taskboard/app.jar
+
+[Service]
+User=ec2-user
+WorkingDirectory=/opt/taskboard
+ExecStartPre=/opt/taskboard/load-env.sh
+# t3.micro（メモリ 1GB）なので、Java が使うメモリの上限を決めておく
+ExecStart=/usr/bin/java -Xms128m -Xmx384m -jar /opt/taskboard/app.jar
+# Java は停止の合図（SIGTERM）で終わると終了コード 143 になるので、正常終了として扱う
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+systemctl daemon-reload
+# 自動起動だけ設定しておく（JAR はまだないので、ここでは起動しない）
+systemctl enable taskboard
+
+# --- 確認用にバージョンをログへ出す ---------------------------------------------
+java -version
+nginx -v
+psql --version
+free -h
+
+echo "user_data setup completed"

@@ -34,3 +34,16 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+// 依存ライブラリを含まない "-plain.jar" は使わないので作らない。
+// （デプロイで送る JAR を、実行可能な bootJar の 1 つだけにする）
+tasks.named('jar') {
+	enabled = false
+}
+
+// 実行可能 JAR のファイル名をバージョンに関係なく app.jar に固定する。
+// デプロイスクリプト（scripts/deploy.ps1）はこのファイルだけを送るので、
+// build/libs に古いバージョンの JAR が残っていても、誤って送ることがない。
+tasks.named('bootJar') {
+	archiveFileName = 'app.jar'
+}

@@ -1,1 +1,13 @@
 .claude/settings.local.json
+
+# Terraform
+# プロバイダの本体や state（DB パスワードなどの秘密情報を含む）、個人の変数ファイルは入れない。
+# .terraform.lock.hcl（プロバイダのバージョン固定）はコミットする。
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+*.tfplan
